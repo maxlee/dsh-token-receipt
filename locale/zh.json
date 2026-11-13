@@ -1,0 +1,7 @@
+{
+  "meta": {
+    "title": "Token 账单",
+    "description": "把日、周、月的 token 用量打印成一张有手感的小票。左侧栏「Token 账单」可选择周期、播放打印动画并保存 PNG，数据只读取本机 DSH 会话日志，不会离开这台设备。",
+    "detail": "docs/DETAIL.zh.md"
+  }
+}
