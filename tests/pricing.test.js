@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  createPricingCatalog, pricesBookOf, priceResolutionOf, priceMessage,
+  createPricingCatalog, pricesBookOf, priceIndexOf, priceResolutionOf, priceMessage,
   createPricingAccumulator, isBeijingPeak, normalizeSourceIdentity,
 } from '../pricing.js'
 
@@ -168,4 +168,104 @@ test('catalog timeout includes a stalled body parser and isolated instances neve
   assert.equal((await other.read()).version, 1)
   assert.equal(stalled.snapshot().book, null)
   stalled.dispose(); other.dispose()
+})
+
+test('Object.prototype keys never pollute globals or misroute providers, models, or canonical maps', () => {
+  const hostile = JSON.parse(JSON.stringify({
+    toString: { models: { valueOf: { cost: rate(0.5, 1.5, 0.05), canonical_model_id: 'toString/valueOf' } } },
+    hasOwnProperty: { models: { toLocaleString: { cost: rate(0.2, 0.8, 0.02), canonical_model_id: 'acme/toLocaleString' } } },
+    constructor: { models: { evil: { cost: rate(9, 9, 9), canonical_model_id: 'evil/model' } } },
+    prototype: { models: { evil: { cost: rate(9, 9, 9) } } },
+  }))
+  Object.defineProperty(hostile, '__proto__', {
+    enumerable: true,
+    value: { models: { evil: { cost: rate(9, 9, 9) } } },
+  })
+  const book = pricesBookOf(hostile)
+  assert.equal(Object.getPrototypeOf(book.prices), null)
+  assert.equal(({}).toString(), '[object Object]')
+  assert.equal(Object.keys(Object.prototype).length, 0)
+  assert.equal(Object.keys(Object.prototype.toString).length, 0)
+
+  const resolved = priceResolutionOf(book, 'toString', 'valueOf')
+  assert.equal(resolved.kind, 'priced')
+  assert.equal(resolved.face.pid, 'toString')
+  assert.equal(resolved.face.mid, 'valueOf')
+  assert.equal(resolved.face.canonical, 'toString/valueOf')
+
+  assert.equal(priceResolutionOf(book, 'constructor', 'gpt-example').kind, 'unpriced')
+  assert.equal(priceResolutionOf(book, 'constructor', 'evil').kind, 'unpriced')
+  assert.equal(priceResolutionOf(book, '__proto__', 'evil').kind, 'unpriced')
+
+  // Plain-object callers of priceIndexOf also ignore inherited Object.prototype properties.
+  const index = priceIndexOf({ toString: { valueOf: { hit: 0, miss: 1, write: 0, out: 2 } } }, {})
+  assert.equal(index.branches.get('toString').byExact.get('valueof')[0].canonical, undefined)
+})
+
+test('sameRate comparison is symmetric regardless of candidate insertion order', () => {
+  // In IEEE-754 float64, |(1000 + 1e-6) - 1000| is ~1.0000000000065512e-6:
+  // slightly above 1e-9 * 1000, but within 1e-9 * 1000.000001.
+  const low = { cost: { input: 1000, output: 2000, cache_read: 100, cache_write: 1000 } }
+  const high = { cost: { input: 1000 + 1e-6, output: 2000, cache_read: 100, cache_write: 1000 } }
+  const forward = pricesBookOf({ a: { models: { m: low } }, b: { models: { m: high } } })
+  const reverse = pricesBookOf({ b: { models: { m: high } }, a: { models: { m: low } } })
+  assert.equal(priceResolutionOf(forward, 'unknown', 'm').kind, 'priced')
+  assert.equal(priceResolutionOf(reverse, 'unknown', 'm').kind, 'priced')
+})
+
+test('manual force refresh bypasses 30s failure backoff after 1s cooldown without refetching fresh catalogs', async () => {
+  let clock = 0, mode = 'error', calls = 0
+  const catalog = createPricingCatalog({
+    now: () => clock,
+    fetchImpl: async () => {
+      calls += 1
+      if (mode === 'error') throw new Error('offline')
+      return response(catalogBody())
+    },
+  })
+
+  // Initial failure at t=0 sets 30s normal backoff and 1s forced cooldown.
+  assert.equal((await catalog.read()).book, null)
+  assert.equal(calls, 1)
+
+  mode = 'ok'
+  clock = 999
+  assert.equal((await catalog.read({ force: true })).book, null)
+  assert.equal(calls, 1, 'force refresh respects minimal 1000ms cooldown')
+
+  clock = 1_000
+  assert.equal((await catalog.read()).book, null)
+  assert.equal(calls, 1, 'unforced read still respects 30s backoff')
+
+  const recovered = await catalog.read({ force: true })
+  assert.notEqual(recovered.book, null)
+  assert.equal(recovered.version, 1)
+  assert.equal(calls, 2)
+
+  // When fresh and non-stale, force: true does not redundantly hit models.dev.
+  clock = 5_000
+  await catalog.read({ force: true })
+  assert.equal(calls, 2)
+
+  // When TTL expires and refresh fails (stale: true), force: true again bypasses 30s backoff after 1s.
+  clock = 3_601_000
+  mode = 'error'
+  const stale = await catalog.read()
+  assert.equal(stale.stale, true)
+  assert.equal(calls, 3)
+
+  mode = 'ok'
+  clock = 3_601_500
+  assert.equal((await catalog.read({ force: true })).stale, true)
+  assert.equal(calls, 3)
+
+  clock = 3_602_000
+  assert.equal((await catalog.read()).stale, true)
+  assert.equal(calls, 3)
+
+  const refreshed = await catalog.read({ force: true })
+  assert.equal(refreshed.stale, false)
+  assert.equal(refreshed.version, 2)
+  assert.equal(calls, 4)
+  catalog.dispose()
 })

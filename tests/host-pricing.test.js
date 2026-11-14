@@ -1,5 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { writeFileSync, utimesSync, unlinkSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { createReceiptService, apply } from '../index.js'
 import { createPricingCatalog, pricesBookOf } from '../pricing.js'
 
@@ -160,4 +163,277 @@ test('apply registers the existing route and disposes it through its activation 
   apply(ctx)
   assert.equal(route.path, '/api/token-receipt'); assert.equal(typeof route.handler, 'function')
   cleanup(); assert.equal(removed, true)
+})
+
+test('malformed event timestamps, non-finite seq, and inheritedEventCount are safely guarded', async () => {
+  const validTime = at('2026-11-13T12:00:00')
+  const events = [
+    { ...event('2026-11-13T12:00:00'), seq: 0 },
+    { ...event('2026-11-13T12:00:00'), seq: 1 },
+    { ...event('2026-11-13T12:00:00'), seq: 2 },
+    { ...event('2026-11-13T12:00:00'), seq: NaN },
+    { type: 'assistant/message', seq: 3, time: NaN, data: { usage: { inputTokens: 99 * M }, message: { source: { provider: 'workbuddy', model: 'deepseek-v4.1-flash' } } } },
+    { type: 'assistant/message', seq: 4, time: Infinity, data: { usage: { inputTokens: 99 * M }, message: { source: { provider: 'workbuddy', model: 'deepseek-v4.1-flash' } } } },
+    { type: 'assistant/message', seq: 5, time: -Infinity, data: { usage: { inputTokens: 99 * M }, message: { source: { provider: 'workbuddy', model: 'deepseek-v4.1-flash' } } } },
+  ]
+  const service = createReceiptService(context(events, { inheritedEventCount: 2 }), { catalog: staticCatalog() })
+  const day = await service.getBill(billArgs)
+  assert.equal(day.totals.requests, 2)
+  assert.equal(day.totals.totalTokens, 2 * M)
+  assert.equal(day.sessions[0].firstAt, validTime)
+  assert.equal(day.sessions[0].lastAt, validTime)
+  const otherDay = await service.getBill({ from: dayTo, to: dayTo + 86_400_000, date: '2026-11-14', period: 'day' })
+  assert.equal(otherDay.totals.requests, 0, 'NaN timestamps never leak into other periods')
+  service.dispose()
+
+  for (const badInherited of [Infinity, -Infinity, NaN, -5]) {
+    const query = {
+      listSessions: async () => [{ header: { id: 'bad-inh', createdAt: validTime } }],
+      readSession: async () => ({ events: [{ ...event('2026-11-13T12:00:00'), seq: 0 }], inheritedEventCount: badInherited }),
+    }
+    const svc = createReceiptService({ get: (name) => name === 'sessionQuery' ? query : undefined }, { catalog: staticCatalog() })
+    const bill = await svc.getBill(billArgs)
+    assert.equal(bill.totals.requests, 1, `inheritedEventCount=${badInherited} falls back to 0`)
+    svc.dispose()
+  }
+})
+
+test('multi-block <...> user prompts extract clean titles, truncate by code point, and count subagent sessions', async () => {
+  const sessions = {
+    main: {
+      header: { id: 'main', origin: 'session', createdAt: dayFrom },
+      events: [
+        {
+          type: 'user/message',
+          data: { message: { content: [
+            { type: 'text', text: '  <system-reminder>internal context</system-reminder> ' },
+            { type: 'text', text: '  Build   receipt   printer  ' },
+          ] } },
+        },
+        event('2026-11-13T12:00:00'),
+      ],
+    },
+    worker: {
+      header: { id: 'worker', origin: 'subagent', createdAt: dayFrom },
+      events: [
+        { type: 'user/message', data: { message: { content: [{ type: 'text', text: '<context>only tags</context>' }] } } },
+        { type: 'user/message', data: { message: { content: [{ type: 'text', text: `${'a'.repeat(44)}🚀🔥✨` }] } } },
+        event('2026-11-13T12:00:00', 'workbuddy', 'deepseek-v4.1-flash', { inputTokens: 2 * M }),
+      ],
+    },
+  }
+  const query = {
+    listSessions: async () => Object.values(sessions).map(({ header }) => ({ header })),
+    readSession: async (id) => ({ events: sessions[id].events, inheritedEventCount: 0 }),
+  }
+  const service = createReceiptService({ get: (name) => name === 'sessionQuery' ? query : undefined }, { catalog: staticCatalog() })
+  const bill = await service.getBill(billArgs)
+  assert.equal(bill.totals.sessions, 2)
+  assert.equal(bill.totals.subagentSessions, 1)
+  const mainRow = bill.sessions.find((s) => s.id === 'main')
+  const workerRow = bill.sessions.find((s) => s.id === 'worker')
+  assert.equal(mainRow.title, 'Build receipt printer')
+  assert.equal(mainRow.origin, 'session')
+  assert.equal(workerRow.title, `${'a'.repeat(44)}🚀…`)
+  assert.equal(workerRow.title.isWellFormed(), true)
+  assert.equal(workerRow.origin, 'subagent')
+  service.dispose()
+})
+
+test('HTTP query params reject empty/out-of-range timestamps, sanitize date labels, and honor DST day bounds', async () => {
+  const fixedNow = at('2026-11-13T15:30:00')
+  const service = createReceiptService(context([event('2026-11-13T12:00:00')]), {
+    catalog: staticCatalog(),
+    now: () => fixedNow,
+  })
+
+  for (const query of ['?from=', '?from=%20', '?from=0', '?from=-100', '?from=1e20', '?from=8640000000000000']) {
+    const res = mockResponse()
+    await service.handler({ method: 'GET', url: `/api/token-receipt${query}` }, res)
+    assert.equal(res.status, 200)
+    const bill = JSON.parse(res.body.toString())
+    assert.ok(!bill.date.includes('NaN'), `unexpected NaN date for ${query}: ${bill.date}`)
+    assert.ok(!bill.billNo.includes('NaN'), `unexpected NaN billNo for ${query}: ${bill.billNo}`)
+    assert.ok(bill.from > 0 && bill.to > bill.from)
+  }
+
+  for (const badDate of ['../etc/passwd', '<script>', 'x'.repeat(33), '%20']) {
+    const res = mockResponse()
+    await service.handler({ method: 'GET', url: `/api/token-receipt?from=${dayFrom}&to=${dayTo}&date=${encodeURIComponent(badDate)}` }, res)
+    const bill = JSON.parse(res.body.toString())
+    assert.match(bill.date, /^\d{4}-\d{2}-\d{2}$/)
+  }
+
+  const validWeek = mockResponse()
+  await service.handler({ method: 'GET', url: `/api/token-receipt?from=${dayFrom}&to=${dayTo}&date=2026-W46&period=week` }, validWeek)
+  assert.equal(JSON.parse(validWeek.body.toString()).date, '2026-W46')
+
+  const prevTz = process.env.TZ
+  try {
+    process.env.TZ = 'America/New_York'
+    const springNoon = Date.parse('2026-03-08T12:00:00-04:00')
+    const springMidnight = new Date(2026, 2, 8).getTime()
+    const dstService = createReceiptService(context([]), { catalog: staticCatalog(), now: () => springNoon })
+
+    const defaultSpring = mockResponse()
+    await dstService.handler({ method: 'GET', url: '/api/token-receipt' }, defaultSpring)
+    const springBill = JSON.parse(defaultSpring.body.toString())
+    assert.equal(springBill.from, springMidnight)
+    assert.equal(springBill.to - springBill.from, 23 * 3600 * 1000)
+
+    const explicitSpring = mockResponse()
+    await dstService.handler({ method: 'GET', url: `/api/token-receipt?from=${springMidnight}` }, explicitSpring)
+    assert.equal(JSON.parse(explicitSpring.body.toString()).to - springMidnight, 23 * 3600 * 1000)
+
+    const fallMidnight = new Date(2026, 10, 1).getTime()
+    const explicitFall = mockResponse()
+    await dstService.handler({ method: 'GET', url: `/api/token-receipt?from=${fallMidnight}` }, explicitFall)
+    assert.equal(JSON.parse(explicitFall.body.toString()).to - fallMidnight, 25 * 3600 * 1000)
+    dstService.dispose()
+  } finally {
+    if (prevTz === undefined) delete process.env.TZ
+    else process.env.TZ = prevTz
+  }
+  service.dispose()
+})
+
+test('local/private unpriced sessions hit billCache when catalog loaded, and ?refresh=1 retries failed catalogs immediately', async () => {
+  let listCalls = 0
+  const localQuery = {
+    listSessions: async () => { listCalls += 1; return [{ header: { id: 'local-1', createdAt: dayFrom } }] },
+    readSession: async () => ({ events: [event('2026-11-13T12:00:00', 'ollama', 'local-llama')], inheritedEventCount: 0 }),
+  }
+  const localService = createReceiptService({ get: (name) => name === 'sessionQuery' ? localQuery : undefined }, {
+    catalog: staticCatalog(),
+    now: () => 1_000,
+  })
+  const firstLocal = await localService.getBill(billArgs)
+  assert.equal(firstLocal.pricing.status, 'unavailable')
+  assert.equal(firstLocal.pricing.totalUsd, null)
+  await localService.getBill(billArgs)
+  assert.equal(listCalls, 1, 'billCache caches local/private unpriced bills when models.dev book is loaded')
+  localService.dispose()
+
+  let clock = 0, available = false, fetchCalls = 0
+  const retryService = createReceiptService(context([event('2026-11-13T12:00:00')]), {
+    now: () => clock,
+    fetchImpl: async () => {
+      fetchCalls += 1
+      if (!available) throw new Error('offline')
+      return { ok: true, status: 200, json: async () => raw }
+    },
+  })
+  const baseUrl = `/api/token-receipt?from=${dayFrom}&to=${dayTo}&date=2026-11-13&period=day`
+
+  const initial = mockResponse()
+  await retryService.handler({ method: 'GET', url: baseUrl }, initial)
+  assert.equal(JSON.parse(initial.body.toString()).pricing.totalUsd, null)
+  assert.equal(fetchCalls, 1)
+
+  available = true
+  clock = 500
+  const tooSoon = mockResponse()
+  await retryService.handler({ method: 'GET', url: `${baseUrl}&refresh=1` }, tooSoon)
+  assert.equal(JSON.parse(tooSoon.body.toString()).pricing.totalUsd, null)
+  assert.equal(fetchCalls, 1)
+
+  clock = 1_500
+  const unforced = mockResponse()
+  await retryService.handler({ method: 'GET', url: baseUrl }, unforced)
+  assert.equal(JSON.parse(unforced.body.toString()).pricing.totalUsd, null)
+  assert.equal(fetchCalls, 1)
+
+  const forced = mockResponse()
+  await retryService.handler({ method: 'GET', url: `${baseUrl}&refresh=1` }, forced)
+  const recovered = JSON.parse(forced.body.toString())
+  assert.equal(recovered.pricing.status, 'complete')
+  near(recovered.pricing.totalUsd, 0.15)
+  assert.equal(fetchCalls, 2)
+  retryService.dispose()
+})
+
+test('sessionUsageCache evicts true LRU, skips statSync when revision is cached, and tolerates non-array session lists', async () => {
+  let activeIds = Array.from({ length: 512 }, (_, i) => `s-${i}`)
+  const readsById = new Map()
+  let clock = 0
+  const lruQuery = {
+    listSessions: async () => activeIds.map((id) => ({ header: { id, createdAt: dayFrom } })),
+    readSession: async (id) => {
+      readsById.set(id, (readsById.get(id) || 0) + 1)
+      return { events: [event('2026-11-13T12:00:00')], inheritedEventCount: 0 }
+    },
+  }
+  const lruPersistence = {
+    list: async () => activeIds.map((id) => ({ header: { id }, revision: 1 })),
+  }
+  const lruService = createReceiptService({
+    get: (name) => name === 'sessionQuery' ? lruQuery : name === 'sessionPersistence' ? lruPersistence : undefined,
+  }, { catalog: staticCatalog(), now: () => clock })
+
+  await lruService.getBill(billArgs)
+  assert.equal(readsById.get('s-0'), 1)
+
+  // Touch s-0 so s-1 becomes least-recently-used, then insert s-512 to trigger eviction.
+  clock += 20_000
+  activeIds = ['s-0']
+  await lruService.getBill(billArgs)
+  assert.equal(readsById.get('s-0'), 1)
+
+  clock += 20_000
+  activeIds = ['s-512']
+  await lruService.getBill(billArgs)
+
+  clock += 20_000
+  activeIds = ['s-0', 's-1']
+  await lruService.getBill(billArgs)
+  assert.equal(readsById.get('s-0'), 1, 's-0 stayed cached after LRU refresh')
+  assert.equal(readsById.get('s-1'), 2, 's-1 was evicted as least-recently-used')
+  lruService.dispose()
+
+  // Verify candidateRecords skips statSync when (id, revision) is already cached.
+  const tempPath = join(tmpdir(), `token-receipt-test-${process.pid}-${Date.now()}.jsonl`)
+  writeFileSync(tempPath, '')
+  try {
+    const validSec = Math.floor(dayFrom / 1000)
+    utimesSync(tempPath, validSec, validSec)
+    let rev = 1, oldReads = 0, t = 0
+    const oldCreatedAt = dayFrom - 30 * 86_400_000
+    const oldQuery = {
+      listSessions: async () => [{ header: { id: 'old-session', createdAt: oldCreatedAt } }],
+      readSession: async () => { oldReads += 1; return { events: [event('2026-11-13T12:00:00')], inheritedEventCount: 0 } },
+    }
+    const oldPersistence = {
+      list: async () => [{ header: { id: 'old-session' }, revision: rev, location: { path: tempPath } }],
+    }
+    const oldService = createReceiptService({
+      get: (name) => name === 'sessionQuery' ? oldQuery : name === 'sessionPersistence' ? oldPersistence : undefined,
+    }, { catalog: staticCatalog(), now: () => t })
+
+    assert.equal((await oldService.getBill(billArgs)).totals.requests, 1)
+    assert.equal(oldReads, 1)
+
+    // Backdate mtime to 1970: cached revision=1 skips statSync and keeps the session without re-reading.
+    utimesSync(tempPath, 0, 0)
+    t += 20_000
+    assert.equal((await oldService.getBill(billArgs)).totals.requests, 1)
+    assert.equal(oldReads, 1)
+
+    // Once revision changes to 2, statSync runs again and filters out the 1970 mtime session.
+    rev = 2
+    t += 20_000
+    assert.equal((await oldService.getBill(billArgs)).totals.requests, 0)
+    assert.equal(oldReads, 1)
+    oldService.dispose()
+  } finally {
+    try { unlinkSync(tempPath) } catch {}
+  }
+
+  // Non-array responses from listSessions / persistence.list do not crash.
+  const nonArrayService = createReceiptService({
+    get: (name) => name === 'sessionQuery'
+      ? { listSessions: async () => null, readSession: async () => null }
+      : name === 'sessionPersistence' ? { list: async () => 'invalid' } : undefined,
+  }, { catalog: staticCatalog() })
+  assert.equal((await nonArrayService.getBill(billArgs)).totals.requests, 0)
+  nonArrayService.dispose()
 })
