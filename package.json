@@ -2,7 +2,7 @@
   "name": "@maxlee/dsh-token-receipt",
   "version": "1.0.0",
   "private": false,
-  "description": "Print daily, weekly, or monthly token usage as a tactile receipt and save it as a PNG.",
+  "description": "Print daily, weekly, or monthly token usage and estimated model costs as a tactile receipt, with PNG export.",
   "type": "module",
   "main": "index.js",
   "exports": {
@@ -23,7 +23,10 @@
     "LICENSE",
     "CHANGELOG.md",
     "README.zh.md",
-    "RELEASING.md"
+    "RELEASING.md",
+    "pricing.js",
+    "THIRD_PARTY_NOTICES.md",
+    "licenses"
   ],
   "dsh": {
     "bundle": {
@@ -69,7 +72,8 @@
   },
   "icon": "icon.svg",
   "scripts": {
-    "check": "node --check index.js && node --check client.js",
-    "prepublishOnly": "npm run check"
+    "check": "node --check index.js && node --check pricing.js && node --check client.js",
+    "prepublishOnly": "npm run check && npm test",
+    "test": "node --test tests/*.test.js"
   }
 }

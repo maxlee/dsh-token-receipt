@@ -1,7 +1,7 @@
 {
   "meta": {
     "title": "Token receipt",
-    "description": "Print daily, weekly, or monthly token usage as a tactile receipt. Open Token receipt in the left sidebar, pick a period, print the animated bill, then save it as a PNG. Usage is read from local DSH session logs and never leaves this device.",
+    "description": "Print daily, weekly, or monthly token usage and estimated costs as a receipt. Currency follows the language, with manual USD/CNY/JPY selection. Replay printing and save a PNG. Usage stays local; only public model prices are fetched from models.dev.",
     "detail": "docs/DETAIL.md"
   }
 }

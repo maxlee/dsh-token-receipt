@@ -87,7 +87,22 @@ window.__ModuleLoader__.load({
         moreModels: '其余 {n} 个模型',
         noUsage: '当前周期没有用量记录',
         emptyHint: '这个周期还没有产生 token 用量。',
-        dataNote: '数据来自本机 DSH 会话记录，不会离开这台设备。',
+        dataNote: '用量保留在本机，仅联网读取公开模型价格。',
+        currency: '币种',
+        autoCurrency: '跟随语言',
+        exchangeRateJpy: '日元按 1 USD = {rate} JPY 换算（{date} 参考汇率）。',
+        estimatedTotal: '预估总计',
+        partialTotal: '已计价小计',
+        totalTokens: 'Token 总量',
+        referencePrice: '参考估算 · models.dev',
+        partialPrice: '有 {n} 次请求未计价，金额为部分小计。',
+        unavailablePrice: '价格暂不可用，用量已保留。',
+        stalePrice: '使用上次获取的价格，稍后可重试。',
+        fallbackPrice: 'WorkBuddy 按 DeepSeek Flash 官方参考价估算。',
+        exchangeRate: '人民币按 1 USD ≈ 6.67 CNY 换算。',
+        unpriced: '未计价',
+        priceRetry: '重新获取价格',
+        priceAsOf: '价格更新',
         fetchError: '读取用量失败',
         retry: '重试',
         thankYou: '感谢每一次提问',
@@ -143,11 +158,97 @@ window.__ModuleLoader__.load({
         moreModels: '+{n} more models',
         noUsage: 'No usage recorded',
         emptyHint: 'No token usage in this period yet.',
-        dataNote: 'Read from local DSH session logs. Nothing leaves this device.',
+        dataNote: 'Usage stays local. Only public model prices are fetched online.',
+        currency: 'Currency',
+        autoCurrency: 'Follow language',
+        exchangeRateJpy: 'JPY at 1 USD = {rate} JPY (reference: {date}).',
+        estimatedTotal: 'Estimated total',
+        partialTotal: 'Priced subtotal',
+        totalTokens: 'Total tokens',
+        referencePrice: 'Reference estimate · models.dev',
+        partialPrice: '{n} requests unpriced; subtotal excludes them.',
+        unavailablePrice: 'Prices unavailable. Usage is still recorded.',
+        stalePrice: 'Using previously fetched prices. Retry to refresh.',
+        fallbackPrice: 'WorkBuddy uses DeepSeek Flash official reference rates.',
+        exchangeRate: 'CNY converted at 1 USD ≈ 6.67 CNY.',
+        unpriced: 'Unpriced',
+        priceRetry: 'Retry prices',
+        priceAsOf: 'Prices updated',
         fetchError: 'Could not read usage',
         retry: 'Retry',
         thankYou: 'Thank you for prompting',
         receiptLabel: 'Token usage receipt',
+      },
+      ja: {
+        nav: "トークン明細",
+        title: "トークン明細",
+        subtitle: "トークン使用量と推定料金をレシートに。日・週・月を選び、印刷や PNG 保存ができます。",
+        print: "明細を印刷",
+        again: "印刷を再生",
+        printingButton: "印刷中…",
+        savePng: "PNG を保存",
+        printPaper: "印刷 / PDF",
+        savingPng: "生成中…",
+        savedPng: "保存しました",
+        saveFailed: "保存できませんでした",
+        day: "日",
+        week: "週",
+        month: "月",
+        daily: "日次",
+        weekly: "週次",
+        monthly: "月次",
+        today: "今日",
+        yesterday: "昨日",
+        thisWeek: "今週",
+        lastWeek: "先週",
+        thisMonth: "今月",
+        lastMonth: "先月",
+        backToday: "今日に戻る",
+        prevPeriod: "前の期間",
+        nextPeriod: "次の期間",
+        pickDate: "日付を選択",
+        preparing: "使用量を集計中",
+        printingStatus: "明細を印刷しています",
+        completeStatus: "印刷が完了しました",
+        errorStatus: "使用量を読み込めませんでした",
+        readyStatus: "印刷できます",
+        total: "合計",
+        usage: "トークン使用量",
+        billNo: "明細番号",
+        period: "期間",
+        generated: "発行時刻",
+        input: "入力",
+        output: "出力",
+        cacheRead: "キャッシュ読込",
+        cacheWrite: "キャッシュ書込",
+        reasoning: "推論",
+        requests: "リクエスト",
+        sessions: "セッション",
+        models: "モデル",
+        model: "モデル",
+        moreModels: "その他 {n} モデル",
+        noUsage: "この期間の使用記録はありません",
+        emptyHint: "この期間のトークン使用量はまだありません。",
+        dataNote: "使用量は端末内に保管し、公開モデル料金のみをオンラインで取得します。",
+        currency: "通貨",
+        autoCurrency: "言語に合わせる",
+        exchangeRateJpy: "1 USD = {rate} JPY で換算（{date} の参考レート）。",
+        estimatedTotal: "推定合計",
+        partialTotal: "計算済み小計",
+        totalTokens: "総トークン数",
+        referencePrice: "参考料金 · models.dev",
+        partialPrice: "{n} 件は料金未計算のため、小計に含まれません。",
+        unavailablePrice: "料金を取得できません。使用量は保持されています。",
+        stalePrice: "前回取得した料金を使用中です。後ほど再試行してください。",
+        fallbackPrice: "WorkBuddy は DeepSeek Flash の公式参考料金で計算します。",
+        exchangeRate: "人民元は 1 USD ≈ 6.67 CNY で換算。",
+        unpriced: "料金未計算",
+        priceRetry: "料金を再取得",
+        priceAsOf: "料金更新",
+        fetchError: "使用量を読み込めませんでした",
+        retry: "再試行",
+        thankYou: "ご利用ありがとうございます",
+        receiptLabel: "トークン使用明細",
       },
     }
 
@@ -237,6 +338,11 @@ body[data-ds-dark-theme] .tr-page {
 .tr-btn:disabled { opacity: .55; cursor: default; }
 .tr-btn-primary { border-color: transparent; background: var(--tr-g12); color: var(--tr-g1); box-shadow: 0 1px 0 rgba(255,255,255,.12) inset; }
 .tr-btn-primary:hover:not(:disabled) { background: var(--tr-g11); border-color: transparent; }
+.tr-filter-group { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.tr-currency { display: flex; align-items: center; gap: 7px; color: var(--tr-page-muted); font-size: 11px; }
+.tr-currency select { border: 1px solid var(--tr-g3); border-radius: 8px; padding: 8px; background: var(--tr-g1); color: var(--tr-page-ink); font: inherit; cursor: pointer; }
+.tr-currency select:focus-visible { outline: 2px solid var(--tr-g9); outline-offset: 2px; }
+.tr-price-feedback { display: flex; align-items: center; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 12px; color: var(--tr-page-muted); font-size: 11px; text-align: center; }
 .tr-controls { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; margin-bottom: 20px; }
 .tr-periods { display: inline-flex; padding: 3px; border: 1px solid var(--tr-g3); border-radius: 8px; background: var(--tr-g1); }
 .tr-periodbtn { height: 30px; padding: 0 16px; border: 0; border-radius: 7px; background: transparent; color: var(--tr-g11); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
@@ -288,7 +394,7 @@ body[data-ds-dark-theme] .tr-page {
 .tr-slot { position: absolute; z-index: 40; right: 24px; bottom: 12px; left: 24px; height: 8px; border: 1px solid var(--tr-g12); border-radius: 4px; background: var(--tr-g12); box-shadow: inset 0 2px 4px color-mix(in oklab, var(--tr-g12) 55%, transparent); }
 body[data-ds-dark-theme] .tr-slot { border-color: var(--tr-g1); background: var(--tr-g1); box-shadow: inset 0 2px 4px color-mix(in oklab, var(--tr-g1) 55%, transparent); }
 
-.tr-output { position: relative; z-index: 50; width: calc(80% + 3rem); max-width: 100%; height: 36rem; margin-top: -16px; padding: 0 24px; overflow: hidden; }
+.tr-output { position: relative; z-index: 50; width: calc(80% + 3rem); max-width: 100%; height: auto; min-height: 36rem; margin-top: -16px; padding: 0 24px 16px; overflow: hidden; }
 .tr-output::before { content: ""; position: absolute; z-index: 20; top: -4px; right: 24px; left: 24px; height: 8px; border-radius: 3px; background: var(--tr-slot-blur); filter: blur(6px); pointer-events: none; }
 .tr-paper-wrap { position: relative; z-index: 1; width: 100%; opacity: 0; transform: translateY(calc(-100% + 2px)); }
 .tr-paper-wrap[data-stage="printing"] { opacity: 1; animation: tr-feed 1.75s linear both; }
@@ -321,6 +427,8 @@ body[data-ds-dark-theme] .tr-slot { border-color: var(--tr-g1); background: var(
 }
 
 .tr-paper { position: relative; z-index: 1; width: 100%; min-height: 20rem; padding: 28px 24px 32px; background-color: var(--tr-paper-bg); background-image: url("data:image/svg+xml;base64,${PAPER_TEXTURE}"); background-size: cover; background-blend-mode: soft-light; color: var(--tr-paper-ink); font-family: "JetBrains Mono", "JetBrains Mono Fallback", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 16px; clip-path: polygon(0 0, 100% 0, 100% calc(100% - 4px), 98.75% 100%, 97.5% calc(100% - 4px), 96.25% 100%, 95% calc(100% - 4px), 93.75% 100%, 92.5% calc(100% - 4px), 91.25% 100%, 90% calc(100% - 4px), 88.75% 100%, 87.5% calc(100% - 4px), 86.25% 100%, 85% calc(100% - 4px), 83.75% 100%, 82.5% calc(100% - 4px), 81.25% 100%, 80% calc(100% - 4px), 78.75% 100%, 77.5% calc(100% - 4px), 76.25% 100%, 75% calc(100% - 4px), 73.75% 100%, 72.5% calc(100% - 4px), 71.25% 100%, 70% calc(100% - 4px), 68.75% 100%, 67.5% calc(100% - 4px), 66.25% 100%, 65% calc(100% - 4px), 63.75% 100%, 62.5% calc(100% - 4px), 61.25% 100%, 60% calc(100% - 4px), 58.75% 100%, 57.5% calc(100% - 4px), 56.25% 100%, 55% calc(100% - 4px), 53.75% 100%, 52.5% calc(100% - 4px), 51.25% 100%, 50% calc(100% - 4px), 48.75% 100%, 47.5% calc(100% - 4px), 46.25% 100%, 45% calc(100% - 4px), 43.75% 100%, 42.5% calc(100% - 4px), 41.25% 100%, 40% calc(100% - 4px), 38.75% 100%, 37.5% calc(100% - 4px), 36.25% 100%, 35% calc(100% - 4px), 33.75% 100%, 32.5% calc(100% - 4px), 31.25% 100%, 30% calc(100% - 4px), 28.75% 100%, 27.5% calc(100% - 4px), 26.25% 100%, 25% calc(100% - 4px), 23.75% 100%, 22.5% calc(100% - 4px), 21.25% 100%, 20% calc(100% - 4px), 18.75% 100%, 17.5% calc(100% - 4px), 16.25% 100%, 15% calc(100% - 4px), 13.75% 100%, 12.5% calc(100% - 4px), 11.25% 100%, 10% calc(100% - 4px), 8.75% 100%, 7.5% calc(100% - 4px), 6.25% 100%, 5% calc(100% - 4px), 3.75% 100%, 2.5% calc(100% - 4px), 1.25% 100%, 0% calc(100% - 4px)); }
+.tr-page:lang(ja) { font-family: Inter, "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, "Noto Sans JP", sans-serif; }
+.tr-page:lang(ja) .tr-paper { font-family: "JetBrains Mono", "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, "Noto Sans JP", monospace; }
 .tr-paper-head { text-align: center; }
 .tr-paper-logo { display: block; width: 40px; height: 40px; margin: 0 auto; color: var(--tr-paper-ink); opacity: .9; }
 .tr-paper-kicker { margin: 13px 0 0; font-size: 9px; font-weight: 700; letter-spacing: .22em; text-transform: uppercase; }
@@ -328,9 +436,13 @@ body[data-ds-dark-theme] .tr-slot { border-color: var(--tr-g1); background: var(
 .tr-rule { margin: 20px 0; border-top: 1px dashed color-mix(in oklab, var(--tr-paper-ink) 25%, transparent); }
 .tr-rule.tight { margin: 16px 0; }
 .tr-section-label { margin: 0 0 7px; color: var(--tr-paper-ink); opacity: .55; font-size: 9px; font-weight: 700; letter-spacing: .72px; text-transform: uppercase; }
-.tr-items { display: flex; flex-direction: column; gap: 0; }
-.tr-item { display: flex; align-items: baseline; gap: 6px; font-size: 9px; line-height: 16px; }
-.tr-item-name { max-width: 80%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
+.tr-items { display: flex; flex-direction: column; gap: 9px; }
+.tr-item-block { min-width: 0; }
+.tr-item-detail { margin: 0; font-size: 9px; line-height: 16px; opacity: .55; }
+.tr-price-notes { margin-top: 12px; }
+.tr-price-notes p { margin: 0; font-size: 7px; line-height: 12px; opacity: .55; overflow-wrap: anywhere; }
+.tr-item { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; font-size: 9px; line-height: 16px; }
+.tr-item-name { min-width: 0; flex: 1; letter-spacing: .08em; text-transform: uppercase; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
 .tr-item-dots { flex: 1; min-width: 8px; border-bottom: 1px dotted color-mix(in oklab, var(--tr-paper-ink) 34%, transparent); transform: translateY(-3px); }
 .tr-item-value { flex: none; font-variant-numeric: tabular-nums; font-weight: 700; }
 .tr-more { margin-top: 2px; color: var(--tr-paper-ink); opacity: .55; font-size: 8px; line-height: 12px; }
@@ -340,6 +452,7 @@ body[data-ds-dark-theme] .tr-slot { border-color: var(--tr-g1); background: var(
 .tr-summary-row dt { margin: 0; color: var(--tr-paper-ink); opacity: .55; }
 .tr-summary-row dd { margin: 0; font-variant-numeric: tabular-nums; }
 .tr-total { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; padding-top: 8px; }
+.tr-total dd { white-space: nowrap; }
 .tr-total dt { margin: 0; font-size: 10px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; }
 .tr-total dd { margin: 0; font-size: 15px; font-weight: 700; line-height: 15px; letter-spacing: -.6px; font-variant-numeric: tabular-nums; }
 .tr-meta { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 4px 16px; font-size: 8px; line-height: 12px; }
@@ -366,7 +479,7 @@ body[data-ds-dark-theme] .tr-slot { border-color: var(--tr-g1); background: var(
   .tr-page, .tr-page * { visibility: visible !important; }
   .tr-page { position: absolute !important; inset: 0 !important; height: auto !important; background: #fff !important; color: #111 !important; }
   .tr-shell { max-width: none !important; padding: 0 !important; }
-  .tr-head, .tr-controls, .tr-foot, .tr-error, .tr-machine { display: none !important; }
+  .tr-head, .tr-controls, .tr-foot, .tr-error, .tr-save-error, .tr-price-feedback, .tr-machine { display: none !important; }
   .tr-stage { padding: 0 !important; background: none !important; }
   .tr-printer { width: 100% !important; }
   .tr-output { width: auto !important; height: auto !important; margin: 0 !important; padding: 0 !important; overflow: visible !important; }
@@ -387,7 +500,7 @@ body[data-ds-dark-theme] .tr-slot { border-color: var(--tr-g1); background: var(
   .tr-daternav { width: 100%; }
   .tr-datenav { flex: 1; }
   .tr-datebox { flex: 1; }
-  .tr-output { height: 33rem; }
+  .tr-output { height: auto; min-height: 33rem; }
 }
 @media (max-width: 420px) {
   .tr-output { width: calc(84% + 2rem); padding: 0 18px; }
@@ -395,7 +508,20 @@ body[data-ds-dark-theme] .tr-slot { border-color: var(--tr-g1); background: var(
 }
 `
 
-    const PANEL_LABEL = { zh: 'Token 账单', en: 'Token receipt' }
+    const PANEL_LABEL = { zh: 'Token 账单', en: 'Token receipt', ja: 'トークン明細' }
+
+    // Official DSH whale geometry from dsh-web-frontend/dist/favicon.svg.
+    // Share the path between the receipt and its Canvas PNG export.
+    const WHALE_PATH = "M48.8354 10.0479C48.3232 9.79199 48.1025 10.2798 47.8032 10.5278C47.7007 10.6079 47.6143 10.7119 47.5273 10.8076C46.7793 11.624 45.9048 12.1597 44.7622 12.0957C43.0923 12 41.666 12.5356 40.4058 13.8398C40.1377 12.2319 39.2476 11.272 37.8926 10.6558C37.1836 10.3359 36.4668 10.0156 35.9702 9.31982C35.6235 8.82373 35.5293 8.27197 35.356 7.72754C35.2456 7.3999 35.1353 7.06396 34.7651 7.00781C34.3633 6.94385 34.2056 7.2876 34.0479 7.57568C33.418 8.75195 33.1733 10.0479 33.1973 11.3599C33.2524 14.312 34.4736 16.6641 36.8999 18.3359C37.1758 18.5278 37.2466 18.7197 37.1597 19C36.9946 19.5757 36.7974 20.1357 36.624 20.7119C36.5137 21.0801 36.3486 21.1597 35.9624 21C34.6309 20.4321 33.481 19.5918 32.4644 18.5757C30.7393 16.8721 29.1792 14.9917 27.2334 13.52C26.7764 13.1758 26.3193 12.856 25.8467 12.5518C23.8618 10.584 26.1069 8.96777 26.627 8.77588C27.1704 8.57568 26.8159 7.8877 25.0591 7.896C23.3022 7.90381 21.6953 8.50391 19.647 9.30371C19.3477 9.42383 19.0322 9.51172 18.7095 9.58398C16.8501 9.22363 14.9199 9.14355 12.9033 9.37598C9.10596 9.80762 6.07275 11.6396 3.84326 14.7681C1.16455 18.5278 0.53418 22.7998 1.30664 27.2559C2.11768 31.9521 4.46582 35.8398 8.07373 38.8799C11.8159 42.0322 16.1255 43.5762 21.041 43.2803C24.0269 43.104 27.3516 42.6963 31.1016 39.4561C32.0469 39.936 33.0396 40.1279 34.686 40.272C35.9546 40.3921 37.1758 40.208 38.1211 40.0078C39.6021 39.688 39.4995 38.2881 38.9639 38.0322C34.623 35.9678 35.5762 36.8081 34.71 36.1279C36.9155 33.4639 40.2402 30.6958 41.54 21.728C41.6426 21.0161 41.5557 20.5679 41.54 19.9917C41.5322 19.6396 41.6108 19.5039 42.0049 19.4639C43.0923 19.3359 44.1479 19.0317 45.1167 18.4878C47.9292 16.9199 49.064 14.3438 49.3315 11.2559C49.3711 10.7837 49.3237 10.2959 48.8354 10.0479ZM24.3262 37.8398C20.1196 34.4639 18.0791 33.3521 17.2358 33.3999C16.4482 33.4482 16.5898 34.3682 16.7632 34.9678C16.9443 35.5601 17.1812 35.9683 17.5117 36.4878C17.7402 36.832 17.8979 37.3442 17.2832 37.728C15.9282 38.584 13.5728 37.4399 13.4624 37.3838C10.7207 35.7358 8.42822 33.5601 6.81348 30.584C5.25342 27.7197 4.34766 24.6479 4.19775 21.3677C4.1582 20.5757 4.38672 20.2959 5.15869 20.1519C6.17529 19.96 7.22314 19.9199 8.23926 20.0718C12.5327 20.7119 16.1885 22.6719 19.2529 25.7759C21.002 27.5439 22.3252 29.6558 23.6885 31.7202C25.1377 33.9121 26.6978 36 28.6831 37.7119C29.3843 38.312 29.9434 38.7681 30.479 39.104C28.8643 39.2881 26.1699 39.3281 24.3262 37.8398ZM26.3433 24.6001C26.3433 24.248 26.6191 23.9678 26.9658 23.9678C27.0444 23.9678 27.1152 23.9839 27.1782 24.0078C27.2651 24.04 27.3438 24.0879 27.4067 24.1602C27.5171 24.272 27.5801 24.4321 27.5801 24.6001C27.5801 24.9521 27.3042 25.2319 26.9575 25.2319C26.6108 25.2319 26.3433 24.9521 26.3433 24.6001ZM32.6064 27.8799C32.2046 28.0479 31.8027 28.1919 31.4165 28.208C30.8179 28.2397 30.1641 27.9922 29.8096 27.688C29.2583 27.2158 28.8643 26.9521 28.6987 26.1279C28.6279 25.7759 28.6675 25.2319 28.7305 24.9199C28.8721 24.248 28.7144 23.8159 28.2495 23.4238C27.8716 23.104 27.3911 23.0161 26.8633 23.0161C26.666 23.0161 26.4849 22.9277 26.3511 22.856C26.1304 22.7441 25.9492 22.4639 26.1226 22.1201C26.1777 22.0078 26.4458 21.7358 26.5088 21.688C27.2256 21.272 28.0527 21.4077 28.8169 21.7197C29.5259 22.0161 30.0615 22.5601 30.834 23.3281C31.6216 24.2559 31.7632 24.5117 32.2124 25.208C32.5669 25.752 32.8901 26.312 33.1104 26.9521C33.2446 27.3521 33.0713 27.6802 32.6064 27.8799Z"
+
+    function WhaleGlyph(props) {
+      const size = (props && props.size) || 40
+      return h(
+        'svg',
+        { width: size, height: size, viewBox: '0 0 50 50', fill: 'currentColor', 'aria-hidden': true },
+        h('path', { d: WHALE_PATH }),
+      )
+    }
 
     function PrinterGlyph(props) {
       const size = (props && props.size) || 18
@@ -566,17 +692,17 @@ body[data-ds-dark-theme] .tr-slot { border-color: var(--tr-g1); background: var(
     }
 
     function fullDate(date, locale) {
-      if (locale === 'zh') return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`
+      if (locale === 'zh' || locale === 'ja') return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`
       return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
     }
 
     function shortDate(date, locale) {
-      if (locale === 'zh') return `${date.getMonth() + 1}月${date.getDate()}日`
+      if (locale === 'zh' || locale === 'ja') return `${date.getMonth() + 1}月${date.getDate()}日`
       return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toUpperCase()
     }
 
     function monthYear(date, locale) {
-      if (locale === 'zh') return `${date.getFullYear()}年${date.getMonth() + 1}月`
+      if (locale === 'zh' || locale === 'ja') return `${date.getFullYear()}年${date.getMonth() + 1}月`
       return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
     }
 
@@ -584,10 +710,11 @@ body[data-ds-dark-theme] .tr-slot { border-color: var(--tr-g1); background: var(
       if (period === 'day') return fullDate(start, locale)
       if (period === 'month') return monthYear(start, locale)
       const last = addDays(endExclusive, -1)
-      if (locale === 'zh') {
+      if (locale === 'zh' || locale === 'ja') {
         const firstPart = `${start.getFullYear()}年${start.getMonth() + 1}月${start.getDate()}日`
-        const secondPart = `${last.getMonth() + 1}月${last.getDate()}日`
-        return `${firstPart} – ${secondPart}`
+        const secondYear = last.getFullYear() !== start.getFullYear() ? `${last.getFullYear()}年` : ''
+        const secondPart = `${secondYear}${last.getMonth() + 1}月${last.getDate()}日`
+        return locale === 'ja' ? `${firstPart}〜${secondPart}` : `${firstPart} – ${secondPart}`
       }
       const first = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
       const second = last.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
@@ -624,7 +751,7 @@ body[data-ds-dark-theme] .tr-slot { border-color: var(--tr-g1); background: var(
 
     function fmtExact(value, locale) {
       const n = Number(value) || 0
-      return new Intl.NumberFormat(locale === 'zh' ? 'zh-CN' : 'en-US').format(n)
+      return new Intl.NumberFormat(locale === 'zh' ? 'zh-CN' : locale === 'ja' ? 'ja-JP' : 'en-US').format(n)
     }
 
     function fmtCompact(value) {
@@ -654,15 +781,46 @@ body[data-ds-dark-theme] .tr-slot { border-color: var(--tr-g1); background: var(
       return text.includes('/') ? text.slice(text.lastIndexOf('/') + 1) : text
     }
 
+    // Display estimates only; billing and model prices remain in USD.
+    // CNY retains dsh-context's fixed conversion. JPY is a dated ECB/Frankfurter
+    // reference quote: https://api.frankfurter.dev/v1/2026-11-13?base=USD&symbols=JPY
+    const DISPLAY_RATES = { usd: 1, cny: 1 / 0.15, jpy: 160 }
+    const JPY_RATE_DATE = '2026-11-13'
+
+    function defaultCurrencyForLocale(locale) {
+      const language = String(locale || 'en').toLowerCase().split(/[-_]/)[0]
+      return language === 'zh' ? 'cny' : language === 'ja' ? 'jpy' : 'usd'
+    }
+
+    function resolveCurrencyPreference(preference, locale) {
+      return Object.hasOwn(DISPLAY_RATES, preference) ? preference : defaultCurrencyForLocale(locale)
+    }
+
+    function fmtMoney(usd, currency = 'usd') {
+      if (typeof usd !== 'number' || !Number.isFinite(usd)) return '—'
+      const selected = Object.hasOwn(DISPLAY_RATES, currency) ? currency : 'usd'
+      const amount = usd * DISPLAY_RATES[selected]
+      const symbol = selected === 'usd' ? '$' : '¥'
+      if (amount > 0 && amount < .000001) return `<${symbol}0.000001`
+      const minimum = selected === 'jpy' ? 0 : 2
+      const small = amount > 0 && amount < (selected === 'jpy' ? 1 : .01)
+      const number = new Intl.NumberFormat('en-US', { minimumFractionDigits: minimum, maximumFractionDigits: small ? 6 : minimum }).format(amount)
+      return `${symbol}${number}`
+    }
+
     function groupModels(models) {
       const grouped = new Map()
       for (const model of models || []) {
         const name = shortModelName(model.model)
-        const existing = grouped.get(name) || { provider: model.provider, model: name, total: 0, input: 0, output: 0, requests: 0 }
+        const existing = grouped.get(name) || { model: name, total: 0, input: 0, output: 0, requests: 0, costUsd: null, complete: true }
         existing.total += Number(model.total) || 0
         existing.input += Number(model.input) || 0
         existing.output += Number(model.output) || 0
         existing.requests += Number(model.requests) || 0
+        // Host prices each provider independently before these display rows merge.
+        const cost = model.pricing && model.pricing.totalUsd
+        if (typeof cost === 'number' && Number.isFinite(cost)) existing.costUsd = (existing.costUsd ?? 0) + cost
+        existing.complete = existing.complete && model.pricing?.complete === true
         grouped.set(name, existing)
       }
       return [...grouped.values()].sort((a, b) => b.total - a.total)
@@ -673,70 +831,84 @@ body[data-ds-dark-theme] .tr-slot { border-color: var(--tr-g1); background: var(
     }
 
     function Receipt(props) {
-      const { copy, locale, data, period, paperRef } = props
+      const { copy, locale, data, period, paperRef, currency: selectedCurrency = 'auto' } = props
+      const currency = resolveCurrencyPreference(selectedCurrency, locale)
       const totals = data.totals
+      const pricing = data.pricing
+      const breakdown = pricing?.breakdown
       const allModels = groupModels(data.models)
       const models = allModels.slice(0, 4)
-      const moreModels = Math.max(0, allModels.length - models.length)
+      const rest = allModels.slice(4)
+      const restCosts = rest.filter((model) => model.costUsd !== null)
+      const more = rest.length === 0 ? null : {
+        model: copy.moreModels.replace('{n}', rest.length),
+        total: rest.reduce((sum, model) => sum + model.total, 0),
+        requests: rest.reduce((sum, model) => sum + model.requests, 0),
+        costUsd: restCosts.length ? restCosts.reduce((sum, model) => sum + model.costUsd, 0) : null,
+        complete: rest.every((model) => model.complete),
+      }
       const rangeStart = new Date(data.from)
       const rangeEnd = new Date(data.to)
       const issued = new Date(data.generatedAt)
       const billNo = billNumber(period, data.date, totals.totalTokens, totals.requests)
+      const partial = pricing?.status === 'partial'
+      const hasPrice = typeof pricing?.totalUsd === 'number' && Number.isFinite(pricing.totalUsd)
+      const notes = []
+      if (!hasPrice) notes.push(copy.unavailablePrice)
+      else if (partial) notes.push(copy.partialPrice.replace('{n}', pricing.unpricedRequests))
+      if (pricing?.stale) notes.push(copy.stalePrice)
+      if (currency === 'cny') notes.push(copy.exchangeRate)
+      if (currency === 'jpy') notes.push(copy.exchangeRateJpy.replace('{rate}', DISPLAY_RATES.jpy).replace('{date}', JPY_RATE_DATE))
+      const modelRow = (model) => h(
+        'div',
+        { className: 'tr-item-block', key: model.model },
+        h(
+          'div',
+          { className: 'tr-item' },
+          h('span', { className: 'tr-item-name', title: model.model }, model.model),
+          h('span', { className: 'tr-item-value', title: model.costUsd === null ? copy.unpriced : undefined },
+            model.costUsd === null ? '—' : `${model.complete ? '' : '≈'}${fmtMoney(model.costUsd, currency)}`),
+        ),
+        h('p', { className: 'tr-item-detail' }, `${fmtExact(model.total, locale)} tokens · ${fmtExact(model.requests, locale)} ${copy.requests}`),
+      )
       return h(
         'article',
-        { className: 'tr-paper', 'aria-label': copy.receiptLabel, ref: paperRef },
+        { className: 'tr-paper', lang: locale, 'data-currency': currency, 'aria-label': copy.receiptLabel, ref: paperRef },
         h(
           'div',
           { className: 'tr-paper-head' },
-          h('span', { className: 'tr-paper-logo' }, h(PrinterGlyph, { size: 40 })),
+          h('span', { className: 'tr-paper-logo' }, h(WhaleGlyph, { size: 40 })),
           h('p', { className: 'tr-paper-kicker' }, 'TOKEN RECEIPT'),
           h('p', { className: 'tr-paper-date' }, periodLabel(period, rangeStart, rangeEnd, locale)),
         ),
         h('div', { className: 'tr-rule' }),
         h('p', { className: 'tr-section-label' }, copy.model),
         models.length > 0
-          ? h(
-              'div',
-              { className: 'tr-items' },
-              models.map((model) =>
-                h(
-                  'div',
-                  { className: 'tr-item', key: `${model.provider}/${model.model}` },
-                  h('span', { className: 'tr-item-name' }, model.model),
-                  h('span', { className: 'tr-item-dots' }),
-                  h('span', { className: 'tr-item-value' }, fmtExact(model.total, locale)),
-                ),
-              ),
-              moreModels > 0 ? h('div', { className: 'tr-more' }, copy.moreModels.replace('{n}', moreModels)) : null,
-            )
+          ? h('div', { className: 'tr-items' }, models.map(modelRow), more ? modelRow(more) : null)
           : h('div', { className: 'tr-empty' }, copy.noUsage),
         h('div', { className: 'tr-rule tight' }),
         h(
           'dl',
           { className: 'tr-summary' },
-          receiptRow(copy.input, fmtExact(totals.inputTokens, locale), 'input'),
-          receiptRow(copy.output, fmtExact(totals.outputTokens, locale), 'output'),
-          totals.cacheReadTokens > 0 ? receiptRow(copy.cacheRead, fmtExact(totals.cacheReadTokens, locale), 'cache-read') : null,
-          totals.cacheWriteTokens > 0 ? receiptRow(copy.cacheWrite, fmtExact(totals.cacheWriteTokens, locale), 'cache-write') : null,
-          totals.reasoningTokens > 0 ? receiptRow(copy.reasoning, fmtExact(totals.reasoningTokens, locale), 'reasoning') : null,
-          receiptRow(copy.requests, fmtExact(totals.requests, locale), 'requests'),
-          receiptRow(copy.sessions, fmtExact(totals.sessions, locale), 'sessions'),
+          receiptRow(`${copy.input} · ${fmtCompact(totals.inputTokens)}`, fmtMoney(hasPrice ? breakdown?.input : null, currency), 'input'),
+          receiptRow(`${copy.output} · ${fmtCompact(totals.outputTokens)}`, fmtMoney(hasPrice ? breakdown?.output : null, currency), 'output'),
+          totals.cacheReadTokens > 0 ? receiptRow(`${copy.cacheRead} · ${fmtCompact(totals.cacheReadTokens)}`, fmtMoney(hasPrice ? breakdown?.cacheRead : null, currency), 'cache-read') : null,
+          totals.cacheWriteTokens > 0 ? receiptRow(`${copy.cacheWrite} · ${fmtCompact(totals.cacheWriteTokens)}`, fmtMoney(hasPrice ? breakdown?.cacheWrite : null, currency), 'cache-write') : null,
+          h('div', { className: 'tr-total' }, h('dt', null, partial ? copy.partialTotal : copy.estimatedTotal), h('dd', null, fmtMoney(pricing?.totalUsd, currency))),
         ),
-        h('div', { className: 'tr-rule' }),
-        h('dl', { className: 'tr-total' }, h('dt', null, 'TOTAL TOKENS'), h('dd', null, fmtExact(totals.totalTokens, locale))),
         h('div', { className: 'tr-rule tight' }),
         h(
           'dl',
           { className: 'tr-meta' },
-          h('dt', null, copy.billNo),
-          h('dd', null, billNo),
-          h('dt', null, copy.period),
-          h('dd', null, periodName(period, copy)),
-          h('dt', null, copy.generated),
-          h('dd', null, `${pad(issued.getHours())}:${pad(issued.getMinutes())}`),
-          h('dt', null, copy.models),
-          h('dd', null, fmtExact(allModels.length, locale)),
+          h('dt', null, copy.totalTokens), h('dd', null, fmtExact(totals.totalTokens, locale)),
+          h('dt', null, `${copy.requests} / ${copy.sessions}`), h('dd', null, `${fmtExact(totals.requests, locale)} / ${fmtExact(totals.sessions, locale)}`),
+          totals.reasoningTokens > 0 ? h(React.Fragment, null, h('dt', null, copy.reasoning), h('dd', null, fmtExact(totals.reasoningTokens, locale))) : null,
+          h('dt', null, copy.billNo), h('dd', null, billNo),
+          h('dt', null, copy.period), h('dd', null, periodName(period, copy)),
+          h('dt', null, copy.generated), h('dd', null, `${pad(issued.getHours())}:${pad(issued.getMinutes())}`),
+          h('dt', null, copy.currency), h('dd', null, currency.toUpperCase()),
         ),
+        notes.length > 0 ? h('div', { className: 'tr-price-notes' }, notes.map((note) => h('p', { key: note }, note))) : null,
         h(
           'div',
           { className: 'tr-barcodewrap' },
@@ -808,7 +980,16 @@ body[data-ds-dark-theme] .tr-slot { border-color: var(--tr-g1); background: var(
 
     async function exportReceiptPng(paperEl, billNo) {
       if (!paperEl) throw new Error('Receipt is not ready')
+      const exportCurrency = paperEl.dataset.currency
+      const exportLanguage = paperEl.lang
+      const assertReceiptUnchanged = () => {
+        if (!paperEl.isConnected) throw new Error('Receipt was closed before export completed')
+        if (paperEl.dataset.currency !== exportCurrency || paperEl.lang !== exportLanguage) {
+          throw new Error('Receipt language or currency changed while saving. Please retry.')
+        }
+      }
       await document.fonts.ready
+      assertReceiptUnchanged()
       const rect = paperEl.getBoundingClientRect()
       const width = Math.max(1, Math.round(rect.width))
       const height = Math.max(1, Math.round(rect.height))
@@ -834,6 +1015,7 @@ body[data-ds-dark-theme] .tr-slot { border-color: var(--tr-g1); background: var(
       }
       ctx.restore()
 
+      assertReceiptUnchanged()
       const paperRect = paperEl.getBoundingClientRect()
       const originX = paperRect.left
       const originY = paperRect.top
@@ -843,8 +1025,7 @@ body[data-ds-dark-theme] .tr-slot { border-color: var(--tr-g1); background: var(
         const logoRect = logo.getBoundingClientRect()
         const logoColor = getComputedStyle(logo).color
         const logoSvg =
-          `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="${logoColor}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">` +
-          `<path d="M6.5 8V4.5h11V8"/><rect x="3" y="8" width="18" height="9" rx="2.2"/><path d="M7.5 17v2.5h9V17"/><path d="M7.5 12.5h9"/></svg>`
+          `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 50 50" fill="${logoColor}"><path d="${WHALE_PATH}"/></svg>`
         try {
           const image = await loadImage(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(logoSvg)}`)
           ctx.drawImage(image, logoRect.left - originX, logoRect.top - originY, logoRect.width, logoRect.height)
@@ -902,11 +1083,13 @@ body[data-ds-dark-theme] .tr-slot { border-color: var(--tr-g1); background: var(
         ctx.restore()
       }
 
+      assertReceiptUnchanged()
       const walker = document.createTreeWalker(paperEl, NodeFilter.SHOW_TEXT)
       let node = walker.nextNode()
       while (node) {
-        const text = (node.nodeValue || '').replace(/\s+/g, ' ').trim()
-        const element = node.parentElement
+        const textNode = node
+        const text = (textNode.nodeValue || '').replace(/\s+/g, ' ').trim()
+        const element = textNode.parentElement
         node = walker.nextNode()
         if (!text || !element || element.closest('svg') || element.closest('style')) continue
         const style = getComputedStyle(element)
@@ -929,7 +1112,31 @@ body[data-ds-dark-theme] .tr-slot { border-color: var(--tr-g1); background: var(
           while (printable.length > 1 && ctx.measureText(`${printable}…`).width > bounds.width) printable = printable.slice(0, -1)
           printable = `${printable}…`
         }
-        ctx.fillText(printable, x, y)
+        const lineHeight = parseFloat(style.lineHeight) || parseFloat(style.fontSize) * 1.2
+        if (style.whiteSpace !== 'nowrap' && bounds.height > lineHeight * 1.5) {
+          // Use the browser's actual line breaks, including CJK notes, in the PNG.
+          const range = document.createRange()
+          const lines = []
+          const raw = textNode.nodeValue || ''
+          for (let offset = 0; offset < raw.length; offset += 1) {
+            range.setStart(textNode, offset)
+            range.setEnd(textNode, offset + 1)
+            const charRect = range.getBoundingClientRect()
+            if (charRect.width === 0) continue
+            let line = lines[lines.length - 1]
+            if (!line || Math.abs(line.top - charRect.top) > 1) {
+              line = { text: '', top: charRect.top, height: charRect.height }
+              lines.push(line)
+            }
+            line.text += raw[offset]
+          }
+          for (const line of lines) {
+            const lineText = style.textTransform === 'uppercase' ? line.text.trim().toUpperCase() : line.text.trim()
+            ctx.fillText(lineText, x, line.top - originY + line.height / 2)
+          }
+        } else {
+          ctx.fillText(printable, x, y)
+        }
         ctx.restore()
       }
 
@@ -942,6 +1149,8 @@ body[data-ds-dark-theme] .tr-slot { border-color: var(--tr-g1); background: var(
       const locale = useLocale(ctx)
       const copy = React.useMemo(() => translatedCopy(ctx), [locale])
       const [period, setPeriod] = React.useState('day')
+      const [currencyPreference, setCurrencyPreference] = React.useState('auto')
+      const currency = resolveCurrencyPreference(currencyPreference, locale)
       const [anchor, setAnchor] = React.useState(() => startOfDay(new Date()))
       const [stage, setStage] = React.useState('processing')
       const [data, setData] = React.useState(null)
@@ -953,12 +1162,14 @@ body[data-ds-dark-theme] .tr-slot { border-color: var(--tr-g1); background: var(
       const saveTimerRef = React.useRef(null)
       const firstRunRef = React.useRef(true)
       const paperRef = React.useRef(null)
+      const savingRef = React.useRef(false)
       const range = React.useMemo(() => periodRange(period, anchor), [period, anchor])
       const currentStart = currentPeriodStart(period)
       const nextDisabled = range.start.getTime() >= currentStart.getTime()
       const rel = relativeLabel(period, range.start, copy)
 
       const runPrint = React.useCallback(async (animate = true) => {
+        if (savingRef.current) return
         if (abortRef.current) abortRef.current.abort()
         if (timerRef.current) {
           clearTimeout(timerRef.current)
@@ -1015,6 +1226,7 @@ body[data-ds-dark-theme] .tr-slot { border-color: var(--tr-g1); background: var(
       }, [runPrint])
 
       const busy = stage === 'processing' || stage === 'printing'
+      const locked = busy || saveState === 'saving'
       const primaryLabel = busy ? copy.printingButton : stage === 'complete' ? copy.again : copy.print
       const saveLabel = saveState === 'saving' ? copy.savingPng : saveState === 'saved' ? copy.savedPng : saveState === 'error' ? copy.saveFailed : copy.savePng
       const dateText = periodLabel(period, range.start, range.end, locale)
@@ -1024,17 +1236,19 @@ body[data-ds-dark-theme] .tr-slot { border-color: var(--tr-g1); background: var(
       const inputMax = period === 'month' ? monthKey(startOfDay(new Date())) : dateKey(startOfDay(new Date()))
 
       const handlePeriod = (next) => {
-        if (next === period) return
+        if (savingRef.current || next === period) return
         setPeriod(next)
       }
       const handlePickDate = (event) => {
+        if (savingRef.current) return
         const value = event.target.value
         if (!value) return
         const parsed = period === 'month' ? parseMonthKey(value) : parseDateKey(value)
         if (parsed) setAnchor(period === 'month' ? startOfMonth(parsed) : startOfDay(parsed))
       }
       const handleSave = async () => {
-        if (!data || !paperRef.current) return
+        if (!data || !paperRef.current || savingRef.current || busy) return
+        savingRef.current = true
         if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
         setSaveState('saving')
         setSaveMessage('')
@@ -1046,12 +1260,14 @@ body[data-ds-dark-theme] .tr-slot { border-color: var(--tr-g1); background: var(
           console.error('[token-receipt] PNG export failed', saveError)
           setSaveState('error')
           setSaveMessage(saveError instanceof Error ? saveError.message : String(saveError))
+        } finally {
+          savingRef.current = false
         }
       }
 
       return h(
         'div',
-        { className: 'tr-page' },
+        { className: 'tr-page', lang: locale },
         h('style', null, CSS),
         h(
           'div',
@@ -1066,19 +1282,19 @@ body[data-ds-dark-theme] .tr-slot { border-color: var(--tr-g1); background: var(
               h('span', { className: 'tr-sr-only', role: 'status', 'aria-live': 'polite' }, saveState === 'saving' ? copy.savingPng : saveState === 'saved' ? copy.savedPng : saveState === 'error' ? `${copy.saveFailed}: ${saveMessage}` : ''),
               h(
                 'button',
-                { className: 'tr-btn', type: 'button', disabled: !data || busy, onClick: () => window.print() },
+                { className: 'tr-btn', type: 'button', disabled: !data || locked, onClick: () => window.print() },
                 h(PrinterGlyph, { size: 14 }),
                 copy.printPaper,
               ),
               h(
                 'button',
-                { className: 'tr-btn', type: 'button', disabled: !data || busy || saveState === 'saving', onClick: handleSave },
+                { className: 'tr-btn', type: 'button', disabled: !data || locked, onClick: handleSave },
                 saveState === 'saved' ? h(CheckCircle) : h(DownloadIcon),
                 saveLabel,
               ),
               h(
                 'button',
-                { className: 'tr-btn tr-btn-primary', type: 'button', disabled: busy, onClick: () => runPrint(true) },
+                { className: 'tr-btn tr-btn-primary', type: 'button', disabled: locked, onClick: () => runPrint(true) },
                 stage === 'complete' ? h(ReplayIcon) : h(PrinterGlyph, { size: 15 }),
                 primaryLabel,
               ),
@@ -1089,10 +1305,18 @@ body[data-ds-dark-theme] .tr-slot { border-color: var(--tr-g1); background: var(
             { className: 'tr-controls' },
             h(
               'div',
-              { className: 'tr-periods', role: 'group', 'aria-label': copy.period },
-              ['day', 'week', 'month'].map((value) =>
-                h('button', { key: value, className: `tr-periodbtn${period === value ? ' is-active' : ''}`, type: 'button', 'aria-pressed': period === value, onClick: () => handlePeriod(value) }, copy[value]),
+              { className: 'tr-filter-group' },
+              h(
+                'div',
+                { className: 'tr-periods', role: 'group', 'aria-label': copy.period },
+                ['day', 'week', 'month'].map((value) =>
+                  h('button', { key: value, className: `tr-periodbtn${period === value ? ' is-active' : ''}`, type: 'button', 'aria-pressed': period === value, disabled: locked, onClick: () => handlePeriod(value) }, copy[value]),
+                ),
               ),
+              h('label', { className: 'tr-currency' }, copy.currency,
+                h('select', { value: currencyPreference, disabled: locked, 'aria-label': copy.currency, onChange: (event) => setCurrencyPreference(event.target.value) },
+                  h('option', { value: 'auto' }, `${copy.autoCurrency} (${defaultCurrencyForLocale(locale).toUpperCase()})`),
+                  h('option', { value: 'usd' }, 'USD'), h('option', { value: 'cny' }, 'CNY'), h('option', { value: 'jpy' }, 'JPY'))),
             ),
             h(
               'div',
@@ -1100,19 +1324,19 @@ body[data-ds-dark-theme] .tr-slot { border-color: var(--tr-g1); background: var(
               h(
                 'div',
                 { className: 'tr-datenav' },
-                h('button', { className: 'tr-navbtn', type: 'button', 'aria-label': copy.prevPeriod, disabled: busy, onClick: () => setAnchor((value) => shiftAnchor(period, value, -1)) }, h(Chevron, { dir: 'left' })),
+                h('button', { className: 'tr-navbtn', type: 'button', 'aria-label': copy.prevPeriod, disabled: locked, onClick: () => setAnchor((value) => shiftAnchor(period, value, -1)) }, h(Chevron, { dir: 'left' })),
                 h(
                   'label',
                   { className: 'tr-datebox', title: copy.pickDate },
                   h('span', { className: 'tr-datemain' }, dateText),
                   rel ? h('span', { className: 'tr-daterel' }, rel) : null,
                   h('span', { className: 'tr-dateicon', 'aria-hidden': true }, h(CalendarIcon)),
-                  h('input', { className: 'tr-datepicker', type: inputType, value: inputValue, max: inputMax, 'aria-label': copy.pickDate, onChange: handlePickDate }),
+                  h('input', { className: 'tr-datepicker', disabled: locked, type: inputType, value: inputValue, max: inputMax, 'aria-label': copy.pickDate, onChange: handlePickDate }),
                 ),
-                h('button', { className: 'tr-navbtn', type: 'button', 'aria-label': copy.nextPeriod, disabled: busy || nextDisabled, onClick: () => setAnchor((value) => shiftAnchor(period, value, 1)) }, h(Chevron, { dir: 'right' })),
+                h('button', { className: 'tr-navbtn', type: 'button', 'aria-label': copy.nextPeriod, disabled: locked || nextDisabled, onClick: () => setAnchor((value) => shiftAnchor(period, value, 1)) }, h(Chevron, { dir: 'right' })),
               ),
               rel !== copy.today && rel !== copy.thisWeek && rel !== copy.thisMonth
-                ? h('button', { className: 'tr-btn tr-todaybtn', type: 'button', disabled: busy, onClick: () => { setPeriod('day'); setAnchor(startOfDay(new Date())) } }, copy.backToday)
+                ? h('button', { className: 'tr-btn tr-todaybtn', type: 'button', disabled: locked, onClick: () => { setPeriod('day'); setAnchor(startOfDay(new Date())) } }, copy.backToday)
                 : null,
             ),
           ),
@@ -1138,7 +1362,7 @@ body[data-ds-dark-theme] .tr-slot { border-color: var(--tr-g1); background: var(
                   'div',
                   { className: 'tr-machine-head' },
                   h('div', { className: 'tr-brand' }, h(PrinterGlyph, { size: 22 }), h('span', null, 'TOKEN RECEIPT')),
-                  h('button', { className: 'tr-machine-btn', type: 'button', onClick: () => { setPeriod('day'); setAnchor(startOfDay(new Date())) } }, h('span', null, h(HomeIcon), copy.today)),
+                  h('button', { className: 'tr-machine-btn', type: 'button', disabled: locked, onClick: () => { setPeriod('day'); setAnchor(startOfDay(new Date())) } }, h('span', null, h(HomeIcon), copy.today)),
                 ),
                 h(
                   'div',
@@ -1150,8 +1374,8 @@ body[data-ds-dark-theme] .tr-slot { border-color: var(--tr-g1); background: var(
                     h(
                       'div',
                       { className: 'tr-screen-right' },
-                      h('p', { className: 'tr-screen-label' }, copy.total),
-                      h('p', { className: 'tr-screen-total' }, data ? fmtCompact(data.totals.totalTokens) : '—', h('span', { className: 'tr-screen-unit' }, ' tokens')),
+                      h('p', { className: 'tr-screen-label' }, data?.pricing?.status === 'partial' ? copy.partialTotal : copy.estimatedTotal),
+                      h('p', { className: 'tr-screen-total' }, fmtMoney(data?.pricing?.totalUsd, currency)),
                     ),
                   ),
                   h(StatusLine, { stage, copy }),
@@ -1172,10 +1396,15 @@ body[data-ds-dark-theme] .tr-slot { border-color: var(--tr-g1); background: var(
                     h(
                       'div',
                       { className: `tr-paper-wrap${REDUCED ? ' is-reduced' : ''}`, 'data-stage': stage === 'processing' ? 'processing' : stage, 'aria-hidden': stage !== 'complete' },
-                      data ? h(Receipt, { copy, locale, data, period, paperRef }) : null,
+                      data ? h(Receipt, { copy, locale, data, period, paperRef, currency }) : null,
                     ),
                   ),
             ),
+            data && (data.pricing?.status !== 'complete' || data.pricing?.stale)
+              ? h('div', { className: 'tr-price-feedback', role: 'status' },
+                  h('span', null, data.pricing?.stale ? copy.stalePrice : data.pricing?.status === 'partial' ? copy.partialPrice.replace('{n}', data.pricing.unpricedRequests) : copy.unavailablePrice),
+                  h('button', { className: 'tr-btn', type: 'button', disabled: locked, onClick: () => runPrint(false) }, copy.priceRetry))
+              : null,
             h('div', { className: 'tr-foot' }, h('i', null), copy.dataNote),
           ),
         ),
@@ -1183,6 +1412,10 @@ body[data-ds-dark-theme] .tr-slot { border-color: var(--tr-g1); background: var(
     }
 
     function apply(ctx) {
+      ctx.effect(() => {
+        if (ctx.locale.getSnapshot().locales.some((language) => language.id === 'ja')) return
+        return ctx.locale.addLanguage({ id: 'ja', label: '日本語', fallback: 'en' })
+      }, 'token-receipt: Japanese language')
       ctx.effect(() => ctx.locale.register(NS, DICT), 'token-receipt: dictionaries')
       const label = () => {
         const active = ctx.locale.getSnapshot().active || 'en'

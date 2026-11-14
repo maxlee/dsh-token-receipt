@@ -3,18 +3,16 @@
  *
  * Serves one read-only JSON endpoint that aggregates recorded assistant
  * `usage` from every stored DSH session into a single local day. The browser
- * half renders the receipt printer; this half never leaves the machine.
+ * half renders the receipt printer; only the public model price catalogue is fetched.
  */
 
 import { statSync } from 'node:fs'
+import { createPricingCatalog, createPricingAccumulator } from './pricing.js'
 
 const ROUTE = '/api/token-receipt'
 const DAY_MS = 24 * 60 * 60 * 1000
 const CACHE_TTL_MS = 10_000
 const RECENT_DAYS = 3
-
-const billCache = new Map()
-const sessionUsageCache = new Map()
 
 export const name = 'token-receipt'
 export const inject = ['webServer']
@@ -44,7 +42,7 @@ function compactDate(timestamp) {
 }
 
 function finite(value) {
-  return typeof value === 'number' && Number.isFinite(value) ? value : 0
+  return typeof value === 'number' && Number.isFinite(value) ? Math.max(0, value) : 0
 }
 
 function hashSuffix(input) {
@@ -123,7 +121,7 @@ async function loadSessionUsage(query, record) {
     if (!usage) continue
     const message = event.data.message || {}
     const source = message.source || {}
-    const total = finite(usage.totalTokens) || finite(usage.inputTokens) + finite(usage.outputTokens)
+    const total = finite(usage.totalTokens) || finite(usage.inputTokens) + finite(usage.cacheReadTokens) + finite(usage.cacheWriteTokens) + finite(usage.outputTokens)
     if (total <= 0) continue
     messages.push({
       time: event.time,
@@ -146,7 +144,7 @@ async function loadSessionUsage(query, record) {
   }
 }
 
-async function cachedSessionUsage(query, record, revision) {
+async function cachedSessionUsage(query, record, revision, sessionUsageCache) {
   const id = record.header.id
   const hit = sessionUsageCache.get(id)
   const key = revision == null ? null : String(revision)
@@ -215,7 +213,7 @@ async function candidateRecords(ctx, query, from, to) {
     .map((record) => ({ record, revision: revisions.get(record.header.id) }))
 }
 
-async function computeBill(ctx, from, to, dateLabel, period = 'day') {
+async function computeBill(ctx, from, to, dateLabel, period, state, snapshot) {
   const query = ctx.get('sessionQuery')
   if (!query || typeof query.listSessions !== 'function' || typeof query.readSession !== 'function') {
     const error = new Error('Session history is unavailable in this profile.')
@@ -224,7 +222,7 @@ async function computeBill(ctx, from, to, dateLabel, period = 'day') {
   }
 
   const candidates = await candidateRecords(ctx, query, from, to)
-  const loaded = await mapLimit(candidates, 6, ({ record, revision }) => cachedSessionUsage(query, record, revision))
+  const loaded = await mapLimit(candidates, 6, ({ record, revision }) => cachedSessionUsage(query, record, revision, state.sessionUsageCache))
   const rows = loaded.filter((row) => row && row.messages.length > 0)
 
   const totals = {
@@ -239,6 +237,7 @@ async function computeBill(ctx, from, to, dateLabel, period = 'day') {
     subagentSessions: 0,
   }
   const modelMap = new Map()
+  const pricing = createPricingAccumulator(snapshot)
   const sessionRows = []
 
   for (const row of rows) {
@@ -251,8 +250,6 @@ async function computeBill(ctx, from, to, dateLabel, period = 'day') {
     let total = 0
     let firstAt = 0
     let lastAt = 0
-    const models = new Map()
-
     for (const message of row.messages) {
       if (message.time < from || message.time >= to) continue
       requests += 1
@@ -265,12 +262,19 @@ async function computeBill(ctx, from, to, dateLabel, period = 'day') {
       firstAt = firstAt === 0 || message.time < firstAt ? message.time : firstAt
       lastAt = message.time > lastAt ? message.time : lastAt
       const key = `${message.provider}\u0000${message.model}`
-      const existing = models.get(key) || { provider: message.provider, model: message.model, total: 0, input: 0, output: 0, requests: 0 }
+      const existing = modelMap.get(key) || {
+        provider: message.provider, model: message.model, total: 0, input: 0, output: 0,
+        cacheRead: 0, cacheWrite: 0, requests: 0, accumulator: createPricingAccumulator(snapshot),
+      }
       existing.total += message.total
       existing.input += message.input
       existing.output += message.output
+      existing.cacheRead += message.cacheRead
+      existing.cacheWrite += message.cacheWrite
       existing.requests += 1
-      models.set(key, existing)
+      const priced = pricing.add(message)
+      existing.accumulator.add(message, priced)
+      modelMap.set(key, existing)
     }
 
     if (requests === 0) continue
@@ -294,22 +298,7 @@ async function computeBill(ctx, from, to, dateLabel, period = 'day') {
       firstAt,
       lastAt,
     })
-    for (const model of models.values()) {
-      const key = model.model || 'unknown'
-      const existing = modelMap.get(key) || {
-        provider: model.provider,
-        model: model.model,
-        total: 0,
-        input: 0,
-        output: 0,
-        requests: 0,
-      }
-      existing.total += model.total
-      existing.input += model.input
-      existing.output += model.output
-      existing.requests += model.requests
-      modelMap.set(key, existing)
-    }
+
   }
 
   const date = dateLabel || compactDate(from)
@@ -322,72 +311,95 @@ async function computeBill(ctx, from, to, dateLabel, period = 'day') {
     period,
     from,
     to,
-    generatedAt: Date.now(),
+    generatedAt: state.now(),
     billNo,
     totals,
-    models: [...modelMap.values()].sort((a, b) => b.total - a.total),
+    pricing: pricing.result(),
+    models: [...modelMap.values()].map(({ accumulator, ...model }) => ({ ...model, pricing: accumulator.result() })).sort((a, b) => b.total - a.total),
     sessions: sessionRows.sort((a, b) => b.total - a.total).slice(0, 24),
   }
 }
 
-async function cachedBill(ctx, key, from, to, dateLabel, period) {
-  const now = Date.now()
+async function cachedBill(ctx, state, key, from, to, dateLabel, period, snapshot) {
+  const { billCache } = state
+  const now = state.now()
   const hit = billCache.get(key)
-  if (hit && now - hit.at < CACHE_TTL_MS) return hit.promise
-  const promise = computeBill(ctx, from, to, dateLabel, period)
-  billCache.set(key, { at: now, promise })
+  if (hit && (hit.pending || now - hit.at < CACHE_TTL_MS)) return hit.promise
+  const promise = computeBill(ctx, from, to, dateLabel, period, state, snapshot)
+  const entry = { at: now, promise, pending: true }
+  billCache.set(key, entry)
   if (billCache.size > 16) {
     const oldest = [...billCache.entries()].sort((a, b) => a[1].at - b[1].at)[0]
     if (oldest) billCache.delete(oldest[0])
   }
   try {
-    return await promise
+    const bill = await promise
+    entry.pending = false
+    entry.at = state.now()
+    if (bill.pricing.status === 'unavailable' && billCache.get(key) === entry) billCache.delete(key)
+    return bill
   } catch (error) {
-    billCache.delete(key)
+    if (billCache.get(key) === entry) billCache.delete(key)
     throw error
   }
 }
 
+/** One activation owns its caches and catalogue, including when tests run concurrently. */
+export function createReceiptService(ctx, options = {}) {
+  const now = options.now || Date.now
+  const catalog = options.catalog || createPricingCatalog({ fetchImpl: options.fetchImpl, now })
+  const state = { now, billCache: new Map(), sessionUsageCache: new Map() }
+
+  async function getBill({ from, to, date, period = 'day' }) {
+    const snapshot = await catalog.read()
+    // Include labels and price state: a previously unavailable price can recover
+    // without waiting for a session revision or an unrelated date to change.
+    const key = JSON.stringify([from, to, date, period, snapshot.version, snapshot.stale])
+    return cachedBill(ctx, state, key, from, to, date, period, snapshot)
+  }
+
+  async function handler(req, res) {
+    const headOnly = req.method === 'HEAD'
+    if (req.method !== 'GET' && !headOnly) {
+      res.writeHead(405, { allow: 'GET, HEAD', 'cache-control': 'no-store' })
+      return res.end()
+    }
+    let url
+    try {
+      url = new URL(req.url || '/', 'http://token-receipt.local')
+    } catch {
+      return sendJson(res, 400, { ok: false, error: 'Invalid request.' }, headOnly)
+    }
+    const defaultBounds = localDayBounds(new Date(now()))
+    const fromParam = url.searchParams.get('from')
+    const toParam = url.searchParams.get('to')
+    const from = fromParam === null ? NaN : Number(fromParam)
+    const to = toParam === null ? NaN : Number(toParam)
+    const safeFrom = Number.isFinite(from) ? from : defaultBounds.from
+    const safeTo = Number.isFinite(to) && to > safeFrom ? to : safeFrom + DAY_MS
+    const dateLabel = url.searchParams.get('date') || compactDate(safeFrom)
+    const requestedPeriod = url.searchParams.get('period')
+    const period = requestedPeriod === 'week' || requestedPeriod === 'month' ? requestedPeriod : 'day'
+    try {
+      const bill = await getBill({ from: safeFrom, to: safeTo, date: dateLabel, period })
+      return sendJson(res, 200, bill, headOnly)
+    } catch (error) {
+      const statusCode = error && Number.isInteger(error.statusCode) ? error.statusCode : 500
+      return sendJson(res, statusCode, { ok: false, error: error instanceof Error ? error.message : String(error) }, headOnly)
+    }
+  }
+
+  return {
+    getBill,
+    handler,
+    dispose() { state.billCache.clear(); state.sessionUsageCache.clear(); catalog.dispose?.() },
+  }
+}
+
 export function apply(ctx) {
-  ctx.effect(
-    () =>
-      ctx.webServer.register({
-        kind: 'exact',
-        path: ROUTE,
-        async handler(req, res) {
-          const headOnly = req.method === 'HEAD'
-          if (req.method !== 'GET' && !headOnly) {
-            res.writeHead(405, { allow: 'GET, HEAD', 'cache-control': 'no-store' })
-            return res.end()
-          }
-          let url
-          try {
-            url = new URL(req.url || '/', 'http://token-receipt.local')
-          } catch {
-            return sendJson(res, 400, { ok: false, error: 'Invalid request.' }, headOnly)
-          }
-          const defaultBounds = localDayBounds()
-          const from = Number(url.searchParams.get('from'))
-          const to = Number(url.searchParams.get('to'))
-          const safeFrom = Number.isFinite(from) ? from : defaultBounds.from
-          const safeTo = Number.isFinite(to) && to > safeFrom ? to : safeFrom + DAY_MS
-          const dateLabel = url.searchParams.get('date') || compactDate(safeFrom)
-          const requestedPeriod = url.searchParams.get('period')
-          const period = requestedPeriod === 'week' || requestedPeriod === 'month' ? requestedPeriod : 'day'
-          try {
-            const bill = await cachedBill(ctx, `${safeFrom}:${safeTo}`, safeFrom, safeTo, dateLabel, period)
-            return sendJson(res, 200, bill, headOnly)
-          } catch (error) {
-            const statusCode = error && Number.isInteger(error.statusCode) ? error.statusCode : 500
-            return sendJson(
-              res,
-              statusCode,
-              { ok: false, error: error instanceof Error ? error.message : String(error) },
-              headOnly,
-            )
-          }
-        },
-      }),
-    'token-receipt: daily usage route',
-  )
+  ctx.effect(() => {
+    const service = createReceiptService(ctx)
+    const unregister = ctx.webServer.register({ kind: 'exact', path: ROUTE, handler: service.handler })
+    return () => { unregister(); service.dispose() }
+  }, 'token-receipt: usage and reference pricing route')
 }

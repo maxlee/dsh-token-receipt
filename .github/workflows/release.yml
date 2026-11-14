@@ -20,8 +20,8 @@ jobs:
           registry-url: https://registry.npmjs.org
       - name: Check
         run: |
-          node --check index.js
-          node --check client.js
+          npm run check
+          npm test
       - name: Publish to npm
         run: npm publish --provenance --access public
         env:

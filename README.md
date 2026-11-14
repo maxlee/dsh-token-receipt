@@ -6,7 +6,7 @@
 A DeepSeek Harness plugin that prints your daily, weekly, or monthly token
 usage as a tactile receipt — complete with a stepped paper feed, a torn edge,
 and a barcode. Save the finished receipt as a PNG or send it through the
-system print dialog.
+system print dialog. The receipt includes model costs and an estimated total.
 
 [中文说明](README.zh.md)
 
@@ -18,12 +18,12 @@ system print dialog.
   forwards without leaving the page.
 - **Tactile receipt printer animation** — processing, stepped paper feed, and
   a completion state, adapted from the dqnamo Receipt Printer study.
+- **Estimated costs** — model line prices, four token cost categories, and a prominent total, using the public models.dev catalogue. The default currency follows the interface language (Chinese → CNY, English → USD, Japanese → JPY); choose USD, CNY or JPY manually at any time, or return to Follow language.
 - **Save as PNG** — exports the actual receipt card at 3× resolution.
 - **Print / PDF** — uses the browser's system print dialog with a print-only
   stylesheet, so only the receipt is printed.
-- **Local by design** — reads recorded token usage from local DSH session logs;
-  no data leaves the machine.
-- **Light and dark themes**, Chinese and English, and reduced-motion support.
+- **Local usage** — session data stays on your machine. Only the public price catalogue is fetched online; no usage or session text is uploaded.
+- **Light and dark themes**, Chinese, English and Japanese, and reduced-motion support. Select **日本語** in DSH's language settings to use the Japanese interface.
 
 ![Token Receipt in light mode](docs/screenshots/light.png)
 
@@ -65,14 +65,16 @@ target: /absolute/path/to/dsh-token-receipt
 4. Use **保存 PNG / Save PNG** to download a high-resolution receipt image.
 5. Use **打印 / PDF / Print / PDF** for the system print dialog.
 
-![Monthly bill](docs/screenshots/month.png)
+![Monthly bill](docs/screenshots/light.png)
 
 ## Data and privacy
 
 The plugin reads token usage from local DSH session records through the DSH
 host APIs. It does not send session data anywhere. Only messages with a
 recorded `usage` value are included; old messages without usage metadata are
-not estimated. Monetary cost is not calculated.
+not estimated. Prices are fetched from https://models.dev/api.json and cached for one hour. Costs are reference estimates, not provider invoices; unavailable model prices are marked instead of treated as free.
+
+See [Pricing](docs/PRICING.md) for the formula, provider matching, the WorkBuddy override, currency conversion, and pricing limits.
 
 ## Compatibility
 
@@ -85,8 +87,8 @@ The bundle contains both a Host half (`index.js`) and a Client half
 ## Development
 
 ```bash
-node --check index.js
-node --check client.js
+npm run check
+npm test
 npm pack --dry-run
 ```
 
@@ -99,8 +101,8 @@ See [docs/FONTS.md](docs/FONTS.md).
 The receipt-printer interaction is inspired by
 [dqnamo's Receipt Printer experiment](https://www.dqnamo.com/experiments/receipt-printer).
 This repository is an independent implementation; the bundled textures are
-original procedural SVGs.
+original procedural SVGs. Pricing resolution is adapted from [dsh-context](https://github.com/bowenliang123/dsh-context) under Apache-2.0; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT for original code — see [LICENSE](LICENSE). Adapted pricing code retains its Apache-2.0 notices; bundled fonts retain their OFL licenses.
