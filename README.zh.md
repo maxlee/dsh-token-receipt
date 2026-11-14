@@ -1,7 +1,7 @@
 # Token 账单 · DeepSeek Harness 插件
 
-[![npm 版本](https://img.shields.io/npm/v/@maxlee/dsh-token-receipt.svg)](https://www.npmjs.com/package/@maxlee/dsh-token-receipt)
-[![许可证](https://img.shields.io/npm/l/@maxlee/dsh-token-receipt.svg)](LICENSE)
+[![npm 版本](https://img.shields.io/npm/v/dsh-token-receipt.svg)](https://www.npmjs.com/package/dsh-token-receipt)
+[![许可证](https://img.shields.io/npm/l/dsh-token-receipt.svg)](LICENSE)
 
 把日、周、月的 token 用量打印成一张有手感的小票：阶梯送纸、撕边、条形码，
 小票展示模型费用与预估总计，打印完成后可保存为 PNG，也可以走系统打印 / PDF。
@@ -30,7 +30,7 @@
 在 DeepSeek Harness 中打开 **Plugins → Add plugin**，输入：
 
 ```text
-@maxlee/dsh-token-receipt
+dsh-token-receipt
 ```
 
 也可以使用 DSH 的 `plugin_manager` 工具：
@@ -38,7 +38,7 @@
 ```json
 {
   "action": "install_bundle",
-  "target": "@maxlee/dsh-token-receipt@1.0.0"
+  "target": "dsh-token-receipt@1.0.0"
 }
 ```
 

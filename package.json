@@ -1,5 +1,5 @@
 {
-  "name": "@maxlee/dsh-token-receipt",
+  "name": "dsh-token-receipt",
   "version": "1.0.0",
   "private": false,
   "description": "Print daily, weekly, or monthly token usage and estimated model costs as a tactile receipt, with PNG export.",

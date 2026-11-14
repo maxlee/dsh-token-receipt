@@ -4,7 +4,7 @@
 // study. All printer and paper styling mirrors the reference design tokens.
 
 window.__ModuleLoader__.load({
-  id: '@maxlee/dsh-token-receipt',
+  id: 'dsh-token-receipt',
   factory(require) {
     const React = require('react')
     const h = React.createElement

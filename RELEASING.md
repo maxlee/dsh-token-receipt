@@ -5,7 +5,7 @@ This repository is set up for a public npm package and a GitHub repository.
 ## Before the first publish
 
 1. Confirm the package name in `package.json` is still available:
-   `npm view @maxlee/dsh-token-receipt version`.
+   `npm view dsh-token-receipt version`.
 2. Log in to npm with the account that owns `@maxlee`:
    `npm login`.
 3. Run the local checks:

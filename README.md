@@ -1,7 +1,7 @@
 # Token Receipt for DeepSeek Harness
 
-[![npm version](https://img.shields.io/npm/v/@maxlee/dsh-token-receipt.svg)](https://www.npmjs.com/package/@maxlee/dsh-token-receipt)
-[![license](https://img.shields.io/npm/l/@maxlee/dsh-token-receipt.svg)](LICENSE)
+[![npm version](https://img.shields.io/npm/v/dsh-token-receipt.svg)](https://www.npmjs.com/package/dsh-token-receipt)
+[![license](https://img.shields.io/npm/l/dsh-token-receipt.svg)](LICENSE)
 
 A DeepSeek Harness plugin that prints your daily, weekly, or monthly token
 usage as a tactile receipt — complete with a stepped paper feed, a torn edge,
@@ -34,7 +34,7 @@ system print dialog. The receipt includes model costs and an estimated total.
 Open **Plugins → Add plugin** in DeepSeek Harness and enter:
 
 ```text
-@maxlee/dsh-token-receipt
+dsh-token-receipt
 ```
 
 Or use the DSH `plugin_manager` tool with an installation spec:
@@ -42,7 +42,7 @@ Or use the DSH `plugin_manager` tool with an installation spec:
 ```json
 {
   "action": "install_bundle",
-  "target": "@maxlee/dsh-token-receipt@1.0.0"
+  "target": "dsh-token-receipt@1.0.0"
 }
 ```
 
