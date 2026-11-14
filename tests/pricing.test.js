@@ -1,9 +1,19 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { execFile } from 'node:child_process'
+import { promisify } from 'node:util'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import {
   createPricingCatalog, pricesBookOf, priceIndexOf, priceResolutionOf, priceMessage,
   createPricingAccumulator, isBeijingPeak, normalizeSourceIdentity,
 } from '../pricing.js'
+
+const execFileAsync = promisify(execFile)
+const pricingModuleUrl = pathToFileURL(fileURLToPath(new URL('../pricing.js', import.meta.url))).href
+
+async function runPricingSubprocess(script, timeout = 2000) {
+  return execFileAsync(process.execPath, ['--input-type=module', '-e', script], { timeout })
+}
 
 const M = 1_000_000
 const at = (text) => Date.parse(text)
@@ -268,4 +278,85 @@ test('manual force refresh bypasses 30s failure backoff after 1s cooldown withou
   assert.equal(refreshed.version, 2)
   assert.equal(calls, 4)
   catalog.dispose()
+})
+
+test('stalled catalog.read keeps the event loop alive until timeoutMs and resolves without draining', async () => {
+  const { stdout } = await runPricingSubprocess(`
+    import { createPricingCatalog } from ${JSON.stringify(pricingModuleUrl)};
+    const catalog = createPricingCatalog({
+      timeoutMs: 5,
+      fetchImpl: async () => ({ ok: true, json: () => new Promise(() => {}) }),
+    });
+    const result = await catalog.read();
+    process.stdout.write(JSON.stringify({ book: result.book }));
+  `)
+  assert.deepEqual(JSON.parse(stdout), { book: null })
+})
+
+test('catalog.dispose settles stalled reads immediately and clears timeout timers even when fetchImpl ignores AbortSignal', async () => {
+  const startedAt = Date.now()
+  const { stdout } = await runPricingSubprocess(`
+    import { createPricingCatalog } from ${JSON.stringify(pricingModuleUrl)};
+    let entered = false;
+    const catalog = createPricingCatalog({
+      timeoutMs: 10_000,
+      fetchImpl: () => {
+        entered = true;
+        return new Promise(() => {});
+      },
+    });
+    const reading = catalog.read();
+    setTimeout(() => catalog.dispose(), 10);
+    const result = await reading;
+    process.stdout.write(JSON.stringify({ book: result.book, entered }));
+  `)
+  assert.deepEqual(JSON.parse(stdout), { book: null, entered: true })
+  assert.ok(Date.now() - startedAt < 2000, 'dispose() should settle and exit well under 2000ms')
+})
+
+test('late asynchronous fetchImpl or json rejections after timeout or dispose never emit unhandledRejection', async () => {
+  const unhandled = []
+  const onUnhandled = (reason) => unhandled.push(reason)
+  process.on('unhandledRejection', onUnhandled)
+  try {
+    let rejectLateFetch
+    const timedOutFetch = createPricingCatalog({
+      timeoutMs: 5,
+      fetchImpl: () => new Promise((_, reject) => { rejectLateFetch = reject }),
+    })
+    assert.equal((await timedOutFetch.read()).book, null)
+
+    let rejectLateJson
+    const timedOutJson = createPricingCatalog({
+      timeoutMs: 5,
+      fetchImpl: async () => ({ ok: true, json: () => new Promise((_, reject) => { rejectLateJson = reject }) }),
+    })
+    assert.equal((await timedOutJson.read()).book, null)
+
+    let rejectDisposedFetch
+    let markStarted
+    const fetchStarted = new Promise((resolve) => { markStarted = resolve })
+    const disposedCatalog = createPricingCatalog({
+      timeoutMs: 10_000,
+      fetchImpl: () => {
+        markStarted()
+        return new Promise((_, reject) => { rejectDisposedFetch = reject })
+      },
+    })
+    const reading = disposedCatalog.read()
+    await fetchStarted
+    disposedCatalog.dispose()
+    assert.equal((await reading).book, null)
+
+    rejectLateFetch(new Error('late fetch rejection after timeout'))
+    rejectLateJson(new Error('late json rejection after timeout'))
+    rejectDisposedFetch(new Error('late fetch rejection after dispose'))
+    await new Promise((resolve) => setTimeout(resolve, 25))
+
+    assert.deepEqual(unhandled, [])
+    timedOutFetch.dispose()
+    timedOutJson.dispose()
+  } finally {
+    process.off('unhandledRejection', onUnhandled)
+  }
 })

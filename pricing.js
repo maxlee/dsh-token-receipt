@@ -512,22 +512,33 @@ export function createPricingCatalog(options = {}) {
   })
 
   async function refresh() {
-    controller = new AbortController()
+    const requestController = new AbortController()
+    controller = requestController
+    const { signal } = requestController
     let timer
+    let onAbort
     try {
       // Race explicitly: a custom fetcher might not implement AbortSignal.
       const next = await Promise.race([
         Promise.resolve().then(async () => {
           const response = await fetchImpl(PRICE_SOURCE, {
             headers: { accept: 'application/json', 'user-agent': 'Mozilla/5.0 TokenReceipt/1.0 (+https://github.com/maxlee/dsh-token-receipt)' },
-            signal: controller.signal,
+            signal,
           })
           if (!response || !response.ok) throw new Error(`Model price request failed (${response?.status ?? 'no response'})`)
           return pricesBookOf(await response.json())
         }),
         new Promise((_, reject) => {
-          timer = setTimeout(() => { controller?.abort(); reject(new Error('Model price request timed out')) }, timeoutMs)
-          timer.unref?.()
+          if (signal.aborted) {
+            reject(new Error('Model price request aborted'))
+            return
+          }
+          onAbort = () => reject(new Error('Model price request aborted'))
+          signal.addEventListener('abort', onAbort, { once: true })
+          timer = setTimeout(() => {
+            reject(new Error('Model price request timed out'))
+            requestController.abort()
+          }, timeoutMs)
         }),
       ])
       if (next === null || next.index.branches.size === 0) throw new Error('Model price catalog contains no usable rates')
@@ -546,7 +557,8 @@ export function createPricingCatalog(options = {}) {
       forceRetryAt = failedAt + forceCooldownMs
     } finally {
       clearTimeout(timer)
-      controller = null
+      if (onAbort) signal.removeEventListener('abort', onAbort)
+      if (controller === requestController) controller = null
     }
   }
 
