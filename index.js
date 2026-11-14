@@ -11,6 +11,7 @@ import { createPricingCatalog, createPricingAccumulator } from './pricing.js'
 
 const ROUTE = '/api/token-receipt'
 const DAY_MS = 24 * 60 * 60 * 1000
+const MAX_TS = 8_640_000_000_000_000
 const CACHE_TTL_MS = 10_000
 const RECENT_DAYS = 3
 
@@ -28,9 +29,22 @@ function sendJson(res, status, body, headOnly = false) {
   res.end(payload)
 }
 
+function nextLocalDay(timestamp) {
+  const d = new Date(timestamp)
+  d.setDate(d.getDate() + 1)
+  return d.getTime()
+}
+
 function localDayBounds(now = new Date()) {
-  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
-  return { from: start, to: start + DAY_MS }
+  const from = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+  const to = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).getTime()
+  return { from, to }
+}
+
+function parseTs(raw) {
+  if (raw === null || raw.trim() === '') return NaN
+  const ts = Number(raw)
+  return Number.isFinite(ts) && ts > 0 && ts <= MAX_TS ? ts : NaN
 }
 
 function compactDate(timestamp) {
@@ -57,8 +71,11 @@ function hashSuffix(input) {
 function messageText(message) {
   const content = message && Array.isArray(message.content) ? message.content : []
   for (const block of content) {
-    if (block && block.type === 'text' && typeof block.text === 'string' && block.text.trim() !== '') {
-      return block.text.trim().replace(/\s+/g, ' ')
+    if (block && block.type === 'text' && typeof block.text === 'string') {
+      const trimmed = block.text.trim()
+      if (trimmed !== '' && !trimmed.startsWith('<')) {
+        return trimmed.replace(/\s+/g, ' ')
+      }
     }
   }
   return ''
@@ -66,7 +83,8 @@ function messageText(message) {
 
 function shortTitle(text) {
   if (!text) return 'Untitled session'
-  return text.length > 46 ? `${text.slice(0, 45)}…` : text
+  const chars = Array.from(text)
+  return chars.length > 46 ? `${chars.slice(0, 45).join('')}…` : text
 }
 
 async function mapLimit(items, limit, worker) {
@@ -98,14 +116,14 @@ async function loadSessionUsage(query, record) {
     return null
   }
   if (!snapshot || !Array.isArray(snapshot.events)) return null
-  const inherited = Number(snapshot.inheritedEventCount) || 0
+  const inherited = finite(snapshot.inheritedEventCount)
   let title = ''
 
   for (const candidate of snapshot.events) {
     if (candidate && candidate.type === 'user/message') {
       const body = candidate.data && candidate.data.message ? candidate.data.message : candidate.data
       const text = messageText(body)
-      if (text !== '' && !text.startsWith('<')) {
+      if (text !== '') {
         title = text
         break
       }
@@ -115,8 +133,8 @@ async function loadSessionUsage(query, record) {
   const messages = []
   for (const event of snapshot.events) {
     if (!event || event.type !== 'assistant/message') continue
-    if (typeof event.seq === 'number' && event.seq < inherited) continue
-    if (typeof event.time !== 'number') continue
+    if (Number.isFinite(event.seq) && event.seq < inherited) continue
+    if (!Number.isFinite(event.time)) continue
     const usage = event.data && event.data.usage
     if (!usage) continue
     const message = event.data.message || {}
@@ -148,9 +166,14 @@ async function cachedSessionUsage(query, record, revision, sessionUsageCache) {
   const id = record.header.id
   const hit = sessionUsageCache.get(id)
   const key = revision == null ? null : String(revision)
-  if (hit && key !== null && hit.revision === key) return hit.value
+  if (hit && key !== null && hit.revision === key) {
+    sessionUsageCache.delete(id)
+    sessionUsageCache.set(id, hit)
+    return hit.value
+  }
   const value = await loadSessionUsage(query, record)
   if (key !== null) {
+    sessionUsageCache.delete(id)
     sessionUsageCache.set(id, { revision: key, value })
     if (sessionUsageCache.size > 512) {
       const oldest = sessionUsageCache.keys().next().value
@@ -165,14 +188,20 @@ async function cachedSessionUsage(query, record, revision, sessionUsageCache) {
  * long ago can still be used today, so recency uses the persisted log's
  * modification time and the live-session set rather than creation time alone.
  */
-async function candidateRecords(ctx, query, from, to) {
-  const records = await query.listSessions()
+async function candidateRecords(ctx, query, from, to, sessionUsageCache) {
+  const rawRecords = await query.listSessions()
+  const records = Array.isArray(rawRecords) ? rawRecords : []
   const persistence = ctx.get('sessionPersistence')
   const live = ctx.get('sessions')
   const liveIds = new Set()
   if (live && typeof live.list === 'function') {
     try {
-      for (const session of live.list()) liveIds.add(session.id)
+      const liveList = live.list()
+      if (liveList) {
+        for (const session of liveList) {
+          if (session && typeof session.id === 'string') liveIds.add(session.id)
+        }
+      }
     } catch {
       /* the live set is an optimization only */
     }
@@ -182,11 +211,13 @@ async function candidateRecords(ctx, query, from, to) {
   if (persistence && typeof persistence.list === 'function') {
     try {
       const snapshots = await persistence.list()
-      for (const snapshot of snapshots) {
-        if (!snapshot || !snapshot.header) continue
-        revisions.set(snapshot.header.id, snapshot.revision)
-        const path = snapshot.location && snapshot.location.path
-        if (typeof path === 'string') paths.set(snapshot.header.id, path)
+      if (Array.isArray(snapshots)) {
+        for (const snapshot of snapshots) {
+          if (!snapshot || !snapshot.header || typeof snapshot.header.id !== 'string') continue
+          revisions.set(snapshot.header.id, snapshot.revision)
+          const path = snapshot.location && snapshot.location.path
+          if (typeof path === 'string') paths.set(snapshot.header.id, path)
+        }
       }
     } catch {
       /* fall back to reading whatever the query returns */
@@ -200,6 +231,8 @@ async function candidateRecords(ctx, query, from, to) {
       if (header.createdAt && header.createdAt >= to) return false
       if (liveIds.has(header.id)) return true
       if (!header.createdAt || header.createdAt >= recentFloor) return true
+      const rev = revisions.get(header.id)
+      if (rev != null && sessionUsageCache?.get(header.id)?.revision === String(rev)) return true
       const path = paths.get(header.id)
       if (path !== undefined) {
         try {
@@ -221,7 +254,7 @@ async function computeBill(ctx, from, to, dateLabel, period, state, snapshot) {
     throw error
   }
 
-  const candidates = await candidateRecords(ctx, query, from, to)
+  const candidates = await candidateRecords(ctx, query, from, to, state.sessionUsageCache)
   const loaded = await mapLimit(candidates, 6, ({ record, revision }) => cachedSessionUsage(query, record, revision, state.sessionUsageCache))
   const rows = loaded.filter((row) => row && row.messages.length > 0)
 
@@ -336,7 +369,7 @@ async function cachedBill(ctx, state, key, from, to, dateLabel, period, snapshot
     const bill = await promise
     entry.pending = false
     entry.at = state.now()
-    if (bill.pricing.status === 'unavailable' && billCache.get(key) === entry) billCache.delete(key)
+    if (snapshot.book === null && billCache.get(key) === entry) billCache.delete(key)
     return bill
   } catch (error) {
     if (billCache.get(key) === entry) billCache.delete(key)
@@ -350,8 +383,8 @@ export function createReceiptService(ctx, options = {}) {
   const catalog = options.catalog || createPricingCatalog({ fetchImpl: options.fetchImpl, now })
   const state = { now, billCache: new Map(), sessionUsageCache: new Map() }
 
-  async function getBill({ from, to, date, period = 'day' }) {
-    const snapshot = await catalog.read()
+  async function getBill({ from, to, date, period = 'day', force = false }) {
+    const snapshot = await catalog.read({ force: Boolean(force) })
     // Include labels and price state: a previously unavailable price can recover
     // without waiting for a session revision or an unrelated date to change.
     const key = JSON.stringify([from, to, date, period, snapshot.version, snapshot.stale])
@@ -371,17 +404,23 @@ export function createReceiptService(ctx, options = {}) {
       return sendJson(res, 400, { ok: false, error: 'Invalid request.' }, headOnly)
     }
     const defaultBounds = localDayBounds(new Date(now()))
-    const fromParam = url.searchParams.get('from')
-    const toParam = url.searchParams.get('to')
-    const from = fromParam === null ? NaN : Number(fromParam)
-    const to = toParam === null ? NaN : Number(toParam)
-    const safeFrom = Number.isFinite(from) ? from : defaultBounds.from
-    const safeTo = Number.isFinite(to) && to > safeFrom ? to : safeFrom + DAY_MS
-    const dateLabel = url.searchParams.get('date') || compactDate(safeFrom)
+    const from = parseTs(url.searchParams.get('from'))
+    const to = parseTs(url.searchParams.get('to'))
+    let safeFrom = Number.isFinite(from) ? from : defaultBounds.from
+    let safeTo = Number.isFinite(to) && to > safeFrom
+      ? to
+      : safeFrom === defaultBounds.from ? defaultBounds.to : nextLocalDay(safeFrom)
+    if (!Number.isFinite(safeTo) || safeTo <= safeFrom) {
+      safeFrom = defaultBounds.from
+      safeTo = defaultBounds.to
+    }
+    const rawDate = url.searchParams.get('date')?.trim() ?? ''
+    const dateLabel = /^[A-Za-z0-9-]{1,32}$/.test(rawDate) ? rawDate : compactDate(safeFrom)
     const requestedPeriod = url.searchParams.get('period')
     const period = requestedPeriod === 'week' || requestedPeriod === 'month' ? requestedPeriod : 'day'
+    const refresh = url.searchParams.get('refresh')
     try {
-      const bill = await getBill({ from: safeFrom, to: safeTo, date: dateLabel, period })
+      const bill = await getBill({ from: safeFrom, to: safeTo, date: dateLabel, period, force: refresh === '1' })
       return sendJson(res, 200, bill, headOnly)
     } catch (error) {
       const statusCode = error && Number.isInteger(error.statusCode) ? error.statusCode : 500

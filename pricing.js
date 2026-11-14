@@ -64,11 +64,6 @@ function orgOf(id) {
   return slash > 0 ? id.slice(0, slash).toLowerCase() : undefined
 }
 
-function labOf(canonical) {
-  const slash = canonical.indexOf('/')
-  return slash > 0 ? canonical.slice(0, slash).toLowerCase() : undefined
-}
-
 function stripPrefixes(input, prefixes) {
   let out = input
   let changed = true
@@ -123,7 +118,7 @@ function familyVendorOf(model) {
   return FAMILY_VENDORS.find(([prefix]) => bare.startsWith(prefix))?.[1]
 }
 
-const MODELS_DEV_PROVIDER_IDS = {
+const MODELS_DEV_PROVIDER_IDS = Object.assign(Object.create(null), {
   'deepseek-official': 'deepseek',
   'deepseek-account': 'deepseek',
   'kimi-coding': 'moonshotai',
@@ -143,10 +138,12 @@ const MODELS_DEV_PROVIDER_IDS = {
   'xiaomi-token-plan-sgp': 'xiaomi',
   'minimax-coding-plan': 'minimax',
   'minimax-cn-coding-plan': 'minimax-cn',
-}
+})
 
 function modelsDevProviderOf(dshProviderId) {
-  return MODELS_DEV_PROVIDER_IDS[dshProviderId] ?? dshProviderId
+  return Object.hasOwn(MODELS_DEV_PROVIDER_IDS, dshProviderId)
+    ? MODELS_DEV_PROVIDER_IDS[dshProviderId]
+    : dshProviderId
 }
 
 function isDeepSeekProvider(dshProviderId) {
@@ -154,14 +151,13 @@ function isDeepSeekProvider(dshProviderId) {
 }
 
 function sameRate(a, b) {
-  const close = (x, y) => Math.abs(x - y) <= 1e-9 * Math.max(1, Math.abs(x))
+  const close = (x, y) => Math.abs(x - y) <= 1e-9 * Math.max(1, Math.abs(x), Math.abs(y))
   return close(a.hit, b.hit) && close(a.miss, b.miss) && close(a.write, b.write) && close(a.out, b.out)
 }
 
 function rateOfEntry(value) {
-  const v = value
-  if (v === null || typeof v !== 'object') return null
-  const r = v
+  const r = asRecord(value)
+  if (r === null) return null
   const num = (x) => typeof x === 'number' && Number.isFinite(x)
   return num(r.hit) && num(r.miss) && num(r.write) && num(r.out)
     ? { hit: r.hit, miss: r.miss, write: r.write, out: r.out }
@@ -180,30 +176,38 @@ function pushForms(map, forms, candidate) {
 
 export function priceIndexOf(
   prices,
-  canonicalOf = {},
+  canonicalOf = Object.create(null),
 ) {
   const byModel = new Map()
   const byNormalized = new Map()
   const branches = new Map()
+  if (!prices || typeof prices !== 'object') return { byModel, byNormalized, branches }
   for (const pid of Object.keys(prices)) {
     if (isSubscriptionPlanProvider(pid)) continue
     const branchPrices = branchOf(prices, pid)
     if (branchPrices === null) continue
+    const canonicalBranch = canonicalOf && typeof canonicalOf === 'object' && Object.hasOwn(canonicalOf, pid)
+      ? asRecord(canonicalOf[pid])
+      : null
     const exact = new Map()
     const suffix = new Map()
     const normalized = new Map()
     const normalizedSuffix = new Map()
     const labs = new Set()
     for (const mid of Object.keys(branchPrices)) {
-      const rate = branchPrices[mid]
-      if (rateOfEntry(rate) === null) continue
-      const canonical = canonicalOf[pid]?.[mid]
-      const lab = canonical === undefined || canonical.length === 0 ? undefined : labOf(canonical)
+      if (!Object.hasOwn(branchPrices, mid)) continue
+      const rate = rateOfEntry(branchPrices[mid])
+      if (rate === null) continue
+      const rawCanonical = canonicalBranch !== null && Object.hasOwn(canonicalBranch, mid)
+        ? canonicalBranch[mid]
+        : undefined
+      const canonical = typeof rawCanonical === 'string' && rawCanonical.length > 0 ? rawCanonical : undefined
+      const lab = canonical === undefined ? undefined : orgOf(canonical)
       const candidate = {
         pid,
         mid,
         rate,
-        ...canonical === undefined || canonical.length === 0 ? {} : { canonical },
+        ...canonical === undefined ? {} : { canonical },
         ...lab === undefined ? {} : { lab },
       }
       const lower = lowerModelId(mid)
@@ -259,9 +263,7 @@ function faceOf(candidate, via, confidence) {
 function lookupBranch(branch, model) {
   const exact = lowerModelId(model)
   const normalized = normalizeModelId(model)
-  const stages
-
-     = [
+  const stages = [
     { map: branch.byExact, keys: [exact], via: 'direct', confidence: 'high' },
     { map: branch.bySuffix, keys: [exact], via: 'branch-suffix', confidence: 'high' },
     { map: branch.byNormalized, keys: [normalized], via: 'branch-normalized', confidence: 'medium' },
@@ -402,32 +404,23 @@ function resolvePriceOf(book, provider, model) {
   return unpriced('no-entry')
 }
 
-function priceFaceOf(book, provider, model) {
-  const resolution = priceResolutionOf(book, provider, model)
-  return resolution.kind === 'priced' ? resolution.face : null
-}
-
-function priceOf(book, provider, model) {
-  return priceFaceOf(book, provider, model)?.rate ?? null
-}
-
 function branchOf(book, id) {
-  const value = book[id]
-  return value !== null && typeof value === 'object' ? value : null
+  if (!book || typeof book !== 'object' || !Object.hasOwn(book, id)) return null
+  return asRecord(book[id])
 }
 
 export function pricesBookOf(value) {
   const data = asRecord(value)
-  if (data === null || Array.isArray(data)) return null
-  const book = {}
-  const canonicalOf = {}
+  if (data === null) return null
+  const book = Object.create(null)
+  const canonicalOf = Object.create(null)
   for (const providerId of Object.keys(data)) {
     if (providerId === '__proto__' || providerId === 'constructor' || providerId === 'prototype') continue
     const provider = asRecord(data[providerId])
     if (provider === null) continue
     const modelList = asRecord(provider.models)
     if (modelList === null) continue
-    const models = {}
+    const models = Object.create(null)
     for (const id of Object.keys(modelList)) {
       if (id === '__proto__' || id === 'constructor' || id === 'prototype') continue
       const model = asRecord(modelList[id])
@@ -442,9 +435,11 @@ export function pricesBookOf(value) {
         write: rateNum(cost.cache_write) ?? miss,
         out,
       }
-      const canonical = model?.['canonical_model_id']
+      const canonical = model.canonical_model_id
       if (typeof canonical === 'string' && canonical.length > 0) {
-        const branch = canonicalOf[providerId] ?? (canonicalOf[providerId] = {})
+        const branch = Object.hasOwn(canonicalOf, providerId)
+          ? canonicalOf[providerId]
+          : (canonicalOf[providerId] = Object.create(null))
         branch[id] = canonical
       }
     }
@@ -460,6 +455,7 @@ function rateNum(value) {
 export const PRICE_SOURCE = 'https://models.dev/api.json'
 export const PRICE_TTL_MS = 60 * 60 * 1000
 export const PRICE_FAILURE_BACKOFF_MS = 30_000
+export const PRICE_FORCE_COOLDOWN_MS = 1_000
 export const PRICE_TIMEOUT_MS = 8_000
 
 /** The provider prefix is stripped only when it is the supplied source provider. */
@@ -494,12 +490,14 @@ export function createPricingCatalog(options = {}) {
   const now = options.now || Date.now
   const ttlMs = options.ttlMs ?? PRICE_TTL_MS
   const failureBackoffMs = options.failureBackoffMs ?? PRICE_FAILURE_BACKOFF_MS
+  const forceCooldownMs = Math.min(failureBackoffMs, options.forceCooldownMs ?? PRICE_FORCE_COOLDOWN_MS)
   const timeoutMs = options.timeoutMs ?? PRICE_TIMEOUT_MS
   let book = null
   let fetchedAt = null
   let version = 0
   let failed = false
   let retryAt = 0
+  let forceRetryAt = 0
   let inflight = null
   let controller = null
   let disposed = false
@@ -529,6 +527,7 @@ export function createPricingCatalog(options = {}) {
         }),
         new Promise((_, reject) => {
           timer = setTimeout(() => { controller?.abort(); reject(new Error('Model price request timed out')) }, timeoutMs)
+          timer.unref?.()
         }),
       ])
       if (next === null || next.index.branches.size === 0) throw new Error('Model price catalog contains no usable rates')
@@ -538,10 +537,13 @@ export function createPricingCatalog(options = {}) {
       version += 1
       failed = false
       retryAt = 0
+      forceRetryAt = 0
     } catch {
       if (disposed) return
+      const failedAt = now()
       failed = true
-      retryAt = now() + failureBackoffMs
+      retryAt = failedAt + failureBackoffMs
+      forceRetryAt = failedAt + forceCooldownMs
     } finally {
       clearTimeout(timer)
       controller = null
@@ -549,11 +551,14 @@ export function createPricingCatalog(options = {}) {
   }
 
   return {
-    async read() {
+    async read(options = {}) {
       if (disposed) return snapshot()
       if (inflight !== null) { await inflight; return snapshot() }
-      const fresh = book !== null && fetchedAt !== null && now() - fetchedAt < ttlMs
-      if ((!fresh || failed) && now() >= retryAt) {
+      const currentNow = now()
+      const force = Boolean(options?.force)
+      const stale = book !== null && (failed || fetchedAt === null || currentNow - fetchedAt >= ttlMs)
+      const needsRefresh = book === null || stale
+      if (needsRefresh && currentNow >= (force ? forceRetryAt : retryAt)) {
         inflight = refresh()
         try { await inflight } finally { inflight = null }
       }

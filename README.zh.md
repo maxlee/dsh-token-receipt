@@ -1,101 +1,90 @@
-# Token 账单 · DeepSeek Harness 插件
+<div align="center">
+  <img src="icon.svg" width="64" height="64" alt="Token 账单" />
+  <h1>Token 账单</h1>
+  <p>将 DeepSeek Harness 每日、每周、每月的 Token 用量与预估模型费用打印成一张有质感的小票。</p>
+  <p>
+    <a href="https://www.npmjs.com/package/dsh-token-receipt"><img src="https://img.shields.io/npm/v/dsh-token-receipt.svg" alt="npm version" /></a>
+    <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="license" /></a>
+    <a href="https://github.com/maxlee/dsh-token-receipt/actions/workflows/ci.yml"><img src="https://github.com/maxlee/dsh-token-receipt/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+    <img src="https://img.shields.io/badge/DSH-%3E%3D0.2.2--rc.3-4c8bf5.svg" alt="DSH >=0.2.2-rc.3" />
+  </p>
+  <p>
+    <a href="README.md">English</a> · <strong>简体中文</strong> · <a href="README.ja.md">日本語</a>
+  </p>
+</div>
 
-[![npm 版本](https://img.shields.io/npm/v/dsh-token-receipt.svg)](https://www.npmjs.com/package/dsh-token-receipt)
-[![许可证](https://img.shields.io/npm/l/dsh-token-receipt.svg)](LICENSE)
+| 深色 · 每日账单 | 浅色 · 每月账单 |
+| :---: | :---: |
+| ![深色主题每日账单预览](assets/screenshots/dark.png) | ![浅色主题每月账单预览](assets/screenshots/light.png) |
 
-把日、周、月的 token 用量打印成一张有手感的小票：阶梯送纸、撕边、条形码，
-小票展示模型费用与预估总计，打印完成后可保存为 PNG，也可以走系统打印 / PDF。
+## 功能特性
 
-[English](README.md)
+Token 账单将本地 DeepSeek Harness 用量记录整理为可打印的小票：
 
-![深色主题下的 Token 账单](docs/screenshots/dark.png)
+- **周期切换。** 查看日、周、月账单，在同一面板内快速翻阅历史日期或回到今天。
+- **预估模型费用。** 基于 [models.dev](https://models.dev) 公开价格，按模型及输入、输出、缓存读取、缓存写入分别展示费用明细。
+- **多币种显示。** 默认币种自动跟随界面语言，也可随时手动切换 `USD`、`CNY` 与 `JPY`。
+- **小票打印动效。** 呈现阶梯送纸、纸张撕边与条形码细节，并自动适配系统的减弱动态效果设置。
+- **高清导出与打印。** 支持导出 3 倍分辨率 PNG 图片，或通过系统打印对话框打印及保存为 PDF。
+- **多语言与明暗主题。** 支持简体中文、English、日本語界面，适配浅色与深色主题。
 
-## 功能
-
-- **日 / 周 / 月账单**：同一个页面切换周期，向前或向后翻查。
-- **小票打印机动画**：整理用量 → 阶梯送纸 → 打印完成，参考 dqnamo 的
-  Receipt Printer 实验。
-- **预估费用**：按模型及输入、输出、缓存读写分别计费，突出显示总价。默认币种跟随语言（中文 CNY、英文 USD、日文 JPY），也可手动切换 USD／CNY／JPY，或恢复「跟随语言」。
-- **保存 PNG**：按 3 倍分辨率导出当前小票图片。
-- **打印 / PDF**：调用系统打印对话框，打印样式只输出小票。
-- **只读本地数据**：从本机 DSH 会话记录读取 token 用量，不会发送到任何地方。
-- 支持浅色 / 深色主题、中／英／日文界面和 reduced-motion；在 DSH 语言设置中选择「日本語」即可使用日文。
-
-![浅色主题下的 Token 账单](docs/screenshots/light.png)
+> [!NOTE]
+> 小票金额基于 [models.dev](https://models.dev) 公开目录价格计算，仅作参考估算，不等同于供应商实付账单。所有会话与 Token 用量数据均保留在本地设备，联网仅用于读取公开价格目录。
 
 ## 安装
 
-### 从 npm 安装（推荐）
+### 从 npm 安装
 
-在 DeepSeek Harness 中打开 **Plugins → Add plugin**，输入：
+在 DeepSeek Harness 中打开 **Plugins**，点击 **Add plugin**，输入：
 
 ```text
 dsh-token-receipt
 ```
 
-也可以使用 DSH 的 `plugin_manager` 工具：
+也可以使用 `plugin_manager` 工具安装：
 
 ```json
 {
-  "action": "install_bundle",
-  "target": "dsh-token-receipt@1.0.0"
+	"action": "install_bundle",
+	"target": "dsh-token-receipt"
 }
 ```
 
-安装后，在左侧栏打开「Token 账单」。如果 DSH 提示 `restart-required`，
-重启一次应用即可。
+### 从本地仓库安装
 
-### 从本地目录安装
+将本地仓库绝对路径传入 `plugin_manager`：
 
-```text
-plugin_manager install_bundle
-target: /absolute/path/to/dsh-token-receipt
+```json
+{
+	"action": "install_bundle",
+	"target": "/absolute/path/to/dsh-token-receipt"
+}
 ```
+
+如果 DeepSeek Harness 提示 `restart-required`，重启一次应用即可启用插件。
 
 ## 使用
 
-1. 左侧栏打开「Token 账单」。
-2. 选择 **日 / 周 / 月**，或点日期选择器跳到某一天。
-3. 第一次打开会自动播放一次打印动画；点「重播打印」可再次播放。
-4. 「保存 PNG」会把高分辨率小票下载到本地。
-5. 「打印 / PDF」会打开系统打印对话框。
+1. 在左侧边栏打开 **Token 账单**。
+2. 选择 **日**、**周** 或 **月**，通过日期控件切换查看周期。
+3. 在 **币种** 菜单中选择 `USD`、`CNY`、`JPY` 或 **跟随语言**。
+4. 点击 **保存 PNG** 下载 3 倍分辨率小票图片，点击 **打印 / PDF** 打印或导出 PDF，或点击 **重播打印** 再次播放送纸动画。
 
-![月账单](docs/screenshots/light.png)
+## 兼容性与开发
 
-## 数据与隐私
-
-插件通过 DSH 的本地会话记录读取 token 用量，不发送任何会话数据；只统计
-记录了 `usage` 的消息，不会估算没有 usage 元数据的旧消息。联网仅获取
-https://models.dev/api.json 的公开价格，缓存一小时，不上传会话或用量数据。
-金额为参考估算，不等同于供应商实付账单；缺价模型会明确标记。
-
-计费公式、模型匹配、WorkBuddy 官方参考价回退和币种规则见 [计价说明](docs/PRICING.md)。
-
-## 兼容性
+运行环境要求：
 
 - DeepSeek Harness `>=0.2.2-rc.3 <0.3.0`
 - Node.js `^22.19.0 || >=24.0.0`
 
-## 开发
+在本地仓库中运行语法检查与单元测试：
 
 ```bash
-npm run check
-npm test
-npm pack --dry-run
+npm run check && npm test
 ```
-
-插件没有运行时 npm 依赖。字体以 base64 内嵌在客户端 bundle 中：
-Inter 与 JetBrains Mono，均为 SIL Open Font License 1.1，详见
-[docs/FONTS.md](docs/FONTS.md)。
-
-## 致谢
-
-小票打印机的交互参考了
-[dqnamo Receipt Printer](https://www.dqnamo.com/experiments/receipt-printer)；
-内置纹理由程序化 SVG 生成。价格匹配参考
-[dsh-context](https://github.com/bowenliang123/dsh-context)，保留 Apache-2.0 授权，
-详见 [第三方说明](THIRD_PARTY_NOTICES.md)。
 
 ## 许可证
 
-原创代码采用 MIT，详见 [LICENSE](LICENSE)。适配的价格匹配代码保留 Apache-2.0 说明；内嵌字体保留 OFL 授权。
+基于 [MIT License](LICENSE) 开源。
+
+小票打印机交互灵感来自 [dqnamo 的 Receipt Printer](https://www.dqnamo.com/experiments/receipt-printer)，价格解析部分改编自 [dsh-context](https://github.com/bowenliang123/dsh-context)。Apache-2.0 与 SIL Open Font License 1.1 相关声明见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。

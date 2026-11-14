@@ -1,31 +1,36 @@
 # Releasing
 
-This repository is set up for a public npm package and a GitHub repository.
+Follow these steps to publish a new version of `dsh-token-receipt` to npm.
 
-## Before the first publish
+## Pre-release checks
 
-1. Confirm the package name in `package.json` is still available:
-   `npm view dsh-token-receipt version`.
-2. Log in to npm with the account that owns `@maxlee`:
-   `npm login`.
-3. Run the local checks:
-   `npm run check && npm pack --dry-run`.
-
-## Publish a version
+1. Run syntax checks, unit tests, and a package dry run:
 
 ```bash
-npm version patch        # or minor / major
-git push origin main --tags
-npm publish --access public
+npm run check
+npm test
+npm pack --dry-run
 ```
 
-For a trusted-publishing release from GitHub Actions, create an
-`NPM_TOKEN` repository secret (or configure npm trusted publishing) and push a
-`v*` tag. The `release.yml` workflow publishes with provenance.
-
-## Push the repository
+2. Sign in to npm with the publisher account for `dsh-token-receipt`:
 
 ```bash
-git remote add origin git@github.com:maxlee/dsh-token-receipt.git
-git push -u origin main --tags
+npm login
+```
+
+## Publish a release
+
+Bump the version in `package.json` with `patch`, `minor`, or `major`, then push the commit and tag to `main`:
+
+```bash
+npm version patch
+git push origin main --tags
+```
+
+Pushing a `v*` tag triggers `.github/workflows/release.yml`, which runs the test suite and publishes to npm with provenance using `NPM_TOKEN` or npm trusted publishing.
+
+To publish directly from a local checkout instead, run:
+
+```bash
+npm publish --access public
 ```
