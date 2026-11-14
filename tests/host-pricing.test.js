@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { writeFileSync, utimesSync, unlinkSync } from 'node:fs'
+import { readFileSync, writeFileSync, utimesSync, unlinkSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createReceiptService, apply } from '../index.js'
@@ -436,4 +436,34 @@ test('sessionUsageCache evicts true LRU, skips statSync when revision is cached,
   }, { catalog: staticCatalog() })
   assert.equal((await nonArrayService.getBill(billArgs)).totals.requests, 0)
   nonArrayService.dispose()
+})
+
+test('package.json scripts.test avoids bare directory args that break Node 22/24 test runner', () => {
+  const assertCompatibleTestScript = (script) => {
+    assert.equal(typeof script, 'string', 'scripts.test must be a string')
+    const match = /^node\s+--test(?:\s+(.*))?$/.exec(script.trim())
+    assert.ok(match, `expected node --test command, got: ${script}`)
+    const args = (match[1] ?? '').trim()
+    assert.ok(
+      args === '' || !/^(?:\.\/)?[\w.-]+\/?$/.test(args),
+      `bare directory argument (${args}) fails with MODULE_NOT_FOUND on Node 22/24`,
+    )
+    assert.ok(
+      args === '' || /^(?:"[^"]*\*[^"]*\.test\.js"|'[^']*\*[^']*\.test\.js')$/.test(args),
+      `scripts.test must use default discovery or a quoted glob pattern ("tests/*.test.js"), got: ${script}`,
+    )
+  }
+
+  assert.throws(
+    () => assertCompatibleTestScript('node --test tests/'),
+    /MODULE_NOT_FOUND/,
+  )
+  for (const broken of ['node --test tests', 'node --test ./tests/', 'node --test tests/*.test.js']) {
+    assert.throws(() => assertCompatibleTestScript(broken))
+  }
+  assert.doesNotThrow(() => assertCompatibleTestScript('node --test'))
+  assert.doesNotThrow(() => assertCompatibleTestScript('node --test "tests/*.test.js"'))
+
+  const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
+  assertCompatibleTestScript(pkg.scripts.test)
 })
