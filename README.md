@@ -1,108 +1,90 @@
-# Token Receipt for DeepSeek Harness
+<div align="center">
+  <img src="icon.svg" width="64" height="64" alt="Token Receipt" />
+  <h1>Token Receipt</h1>
+  <p>Print daily, weekly, and monthly DeepSeek Harness token usage and estimated model costs as a tactile receipt.</p>
+  <p>
+    <a href="https://www.npmjs.com/package/dsh-token-receipt"><img src="https://img.shields.io/npm/v/dsh-token-receipt.svg" alt="npm version" /></a>
+    <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="license" /></a>
+    <a href="https://github.com/maxlee/dsh-token-receipt/actions/workflows/ci.yml"><img src="https://github.com/maxlee/dsh-token-receipt/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+    <img src="https://img.shields.io/badge/DSH-%3E%3D0.2.2--rc.3-4c8bf5.svg" alt="DSH >=0.2.2-rc.3" />
+  </p>
+  <p>
+    <strong>English</strong> · <a href="README.zh.md">简体中文</a> · <a href="README.ja.md">日本語</a>
+  </p>
+</div>
 
-[![npm version](https://img.shields.io/npm/v/dsh-token-receipt.svg)](https://www.npmjs.com/package/dsh-token-receipt)
-[![license](https://img.shields.io/npm/l/dsh-token-receipt.svg)](LICENSE)
-
-A DeepSeek Harness plugin that prints your daily, weekly, or monthly token
-usage as a tactile receipt — complete with a stepped paper feed, a torn edge,
-and a barcode. Save the finished receipt as a PNG or send it through the
-system print dialog. The receipt includes model costs and an estimated total.
-
-[中文说明](README.zh.md)
-
-![Token Receipt in dark mode](docs/screenshots/dark.png)
+| Dark · Daily | Light · Monthly |
+| :---: | :---: |
+| ![Token Receipt dark theme daily view](assets/screenshots/dark.png) | ![Token Receipt light theme monthly view](assets/screenshots/light.png) |
 
 ## Features
 
-- **Daily / weekly / monthly bills** — switch periods and move backwards or
-  forwards without leaving the page.
-- **Tactile receipt printer animation** — processing, stepped paper feed, and
-  a completion state, adapted from the dqnamo Receipt Printer study.
-- **Estimated costs** — model line prices, four token cost categories, and a prominent total, using the public models.dev catalogue. The default currency follows the interface language (Chinese → CNY, English → USD, Japanese → JPY); choose USD, CNY or JPY manually at any time, or return to Follow language.
-- **Save as PNG** — exports the actual receipt card at 3× resolution.
-- **Print / PDF** — uses the browser's system print dialog with a print-only
-  stylesheet, so only the receipt is printed.
-- **Local usage** — session data stays on your machine. Only the public price catalogue is fetched online; no usage or session text is uploaded.
-- **Light and dark themes**, Chinese, English and Japanese, and reduced-motion support. Select **日本語** in DSH's language settings to use the Japanese interface.
+Token Receipt turns local DeepSeek Harness usage records into a printable receipt:
 
-![Token Receipt in light mode](docs/screenshots/light.png)
+- **Period navigation.** View daily, weekly, or monthly bills and step across dates without leaving the panel.
+- **Estimated model costs.** Break down spending per model across input, output, cache read, and cache write tokens using public [models.dev](https://models.dev) rates.
+- **Multi-currency display.** Match the default currency to your interface language, or switch manually between `USD`, `CNY`, and `JPY`.
+- **Tactile receipt feed.** Watch a stepped paper-feed animation with a torn paper edge and a barcode, with automatic `prefers-reduced-motion` support.
+- **High-DPI export and print.** Save the receipt as a 3x PNG image, or print and export to PDF through your system print dialog.
+- **Multilingual themes.** Use the interface in English, Simplified Chinese, or Japanese across light and dark themes.
 
-## Install
+> [!NOTE]
+> Displayed costs are reference estimates calculated from public [models.dev](https://models.dev) catalog rates, not provider invoices. All session and token usage data stays local on your device, and only public price rates are fetched online.
 
-### From npm (recommended)
+## Installation
 
-Open **Plugins → Add plugin** in DeepSeek Harness and enter:
+### Install from npm
+
+Open **Plugins** in DeepSeek Harness, click **Add plugin**, and enter:
 
 ```text
 dsh-token-receipt
 ```
 
-Or use the DSH `plugin_manager` tool with an installation spec:
+Or install with the `plugin_manager` tool:
 
 ```json
 {
-  "action": "install_bundle",
-  "target": "dsh-token-receipt@1.0.0"
+	"action": "install_bundle",
+	"target": "dsh-token-receipt"
 }
 ```
 
-After installation, open **Token 账单 / Token receipt** from the left sidebar.
-If DSH reports `restart-required`, restart the app once.
+### Install from a local checkout
 
-### From a local checkout
+Pass the local repository path to `plugin_manager`:
 
-```text
-plugin_manager install_bundle
-target: /absolute/path/to/dsh-token-receipt
+```json
+{
+	"action": "install_bundle",
+	"target": "/absolute/path/to/dsh-token-receipt"
+}
 ```
+
+If DeepSeek Harness reports `restart-required`, restart the app once to activate the plugin.
 
 ## Usage
 
-1. Open **Token 账单 / Token receipt** in the left sidebar.
-2. Pick **日 / 周 / 月** (day / week / month), or use the date picker.
-3. The first visit plays the printer animation; use **重播打印 / Replay print**
-   to replay it.
-4. Use **保存 PNG / Save PNG** to download a high-resolution receipt image.
-5. Use **打印 / PDF / Print / PDF** for the system print dialog.
+1. Open **Token receipt** from the left sidebar.
+2. Select **Day**, **Week**, or **Month**, and use the date controls to move between periods.
+3. Choose `USD`, `CNY`, `JPY`, or **Follow language** in the **Currency** menu.
+4. Click **Save PNG** to download a 3x receipt image, **Print / PDF** to print or save a PDF, or **Replay print** to run the paper-feed animation again.
 
-![Monthly bill](docs/screenshots/light.png)
+## Compatibility and development
 
-## Data and privacy
-
-The plugin reads token usage from local DSH session records through the DSH
-host APIs. It does not send session data anywhere. Only messages with a
-recorded `usage` value are included; old messages without usage metadata are
-not estimated. Prices are fetched from https://models.dev/api.json and cached for one hour. Costs are reference estimates, not provider invoices; unavailable model prices are marked instead of treated as free.
-
-See [Pricing](docs/PRICING.md) for the formula, provider matching, the WorkBuddy override, currency conversion, and pricing limits.
-
-## Compatibility
+Token Receipt requires the following runtime versions:
 
 - DeepSeek Harness `>=0.2.2-rc.3 <0.3.0`
 - Node.js `^22.19.0 || >=24.0.0`
 
-The bundle contains both a Host half (`index.js`) and a Client half
-(`client.js`), plus locale resources, a detail illustration, and an icon.
-
-## Development
+Run syntax checks and the test suite from a local checkout:
 
 ```bash
-npm run check
-npm test
-npm pack --dry-run
+npm run check && npm test
 ```
-
-The plugin has no runtime npm dependencies. Fonts are embedded in the client
-bundle: Inter and JetBrains Mono, both under the SIL Open Font License 1.1.
-See [docs/FONTS.md](docs/FONTS.md).
-
-## Credits
-
-The receipt-printer interaction is inspired by
-[dqnamo's Receipt Printer experiment](https://www.dqnamo.com/experiments/receipt-printer).
-This repository is an independent implementation; the bundled textures are
-original procedural SVGs. Pricing resolution is adapted from [dsh-context](https://github.com/bowenliang123/dsh-context) under Apache-2.0; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 ## License
 
-MIT for original code — see [LICENSE](LICENSE). Adapted pricing code retains its Apache-2.0 notices; bundled fonts retain their OFL licenses.
+Licensed under the [MIT License](LICENSE).
+
+Receipt printer interaction inspired by [dqnamo's Receipt Printer](https://www.dqnamo.com/experiments/receipt-printer), with pricing resolution adapted from [dsh-context](https://github.com/bowenliang123/dsh-context). See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for Apache-2.0 and SIL Open Font License 1.1 notices.

@@ -2,6 +2,6 @@
   "meta": {
     "title": "Token receipt",
     "description": "Print daily, weekly, or monthly token usage and estimated costs as a receipt. Currency follows the language, with manual USD/CNY/JPY selection. Replay printing and save a PNG. Usage stays local; only public model prices are fetched from models.dev.",
-    "detail": "docs/DETAIL.md"
+    "detail": "assets/detail/DETAIL.md"
   }
 }
