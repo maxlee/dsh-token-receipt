@@ -1,7 +1,7 @@
 <div align="center">
   <img src="icon.svg" width="64" height="64" alt="Token Receipt" />
   <h1>Token Receipt</h1>
-  <p>Print daily, weekly, and monthly DeepSeek Harness token usage and estimated model costs as a tactile receipt.</p>
+  <p>Print daily, weekly, monthly, 30-day, 90-day, and all-time DeepSeek Harness token usage and estimated model costs as a tactile receipt, then copy the image or save a PNG.</p>
   <p>
     <a href="https://www.npmjs.com/package/dsh-token-receipt"><img src="https://img.shields.io/npm/v/dsh-token-receipt.svg" alt="npm version" /></a>
     <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="license" /></a>
@@ -21,11 +21,11 @@
 
 Token Receipt turns local DeepSeek Harness usage records into a printable receipt:
 
-- **Period navigation.** View daily, weekly, or monthly bills and step across dates without leaving the panel.
+- **Period navigation.** Switch between **Day**, **Week**, **Month**, **30 days**, **90 days**, and **All** views, step across dates for Day, Week, and Month without leaving the panel, and replay the paper-feed print animation automatically on every period change.
 - **Estimated model costs.** Break down spending per model across input, output, cache read, and cache write tokens using public [models.dev](https://models.dev) rates.
 - **Multi-currency display.** Match the default currency to your interface language, or switch manually between `USD`, `CNY`, and `JPY`.
-- **Tactile receipt feed.** Watch a stepped paper-feed animation with a torn paper edge and a barcode, with automatic `prefers-reduced-motion` support.
-- **High-DPI export and print.** Save the receipt as a 3x PNG image, or print and export to PDF through your system print dialog.
+- **Tactile receipt feed.** Watch a stepped paper-feed animation with a torn paper edge and a barcode whenever you print or switch periods, with automatic `prefers-reduced-motion` support.
+- **High-DPI export and sharing.** Click **Copy image** to copy a 3x PNG directly to your clipboard for instant pasting and sharing, or **Save PNG** to download a local image.
 - **Multilingual themes.** Use the interface in English, Simplified Chinese, or Japanese across light and dark themes.
 
 > [!NOTE]
@@ -66,9 +66,9 @@ If DeepSeek Harness reports `restart-required`, restart the app once to activate
 ## Usage
 
 1. Open **Token receipt** from the left sidebar.
-2. Select **Day**, **Week**, or **Month**, and use the date controls to move between periods.
+2. Select **Day**, **Week**, **Month**, **30 days**, **90 days**, or **All** (use the date controls on Day, Week, and Month to step across dates or return to today). Switching periods plays the paper-feed print animation automatically.
 3. Choose `USD`, `CNY`, `JPY`, or **Follow language** in the **Currency** menu.
-4. Click **Save PNG** to download a 3x receipt image, **Print / PDF** to print or save a PDF, or **Replay print** to run the paper-feed animation again.
+4. Click **Copy image** to copy a 3x PNG directly to your clipboard for instant pasting and sharing, **Save PNG** to download the receipt image, or **Replay print** to run the paper-feed animation again.
 
 ## Compatibility and development
 
