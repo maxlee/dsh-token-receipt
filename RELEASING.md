@@ -27,7 +27,13 @@ npm version patch
 git push origin main --tags
 ```
 
-Pushing a `v*` tag triggers `.github/workflows/release.yml`, which runs the test suite and publishes to npm with provenance using `NPM_TOKEN` or npm trusted publishing.
+Pushing a `v*` tag triggers `.github/workflows/release.yml`, which runs the test suite and publishes to npm with provenance through npm Trusted Publishing (GitHub OIDC). The package's trusted publisher is bound to this repository and `release.yml`, so no `NPM_TOKEN` secret is required.
+
+If the package is new, or the workflow file is renamed, configure the trusted publisher once:
+
+```bash
+npm trust github dsh-token-receipt --file release.yml --repo maxlee/dsh-token-receipt --allow-publish
+```
 
 To publish directly from a local checkout instead, run:
 
