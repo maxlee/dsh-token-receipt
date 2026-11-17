@@ -467,3 +467,199 @@ test('package.json scripts.test avoids bare directory args that break Node 22/24
   const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
   assertCompatibleTestScript(pkg.scripts.test)
 })
+
+test('days30, days90, and all periods compute bounds, billNo prefixes, firstAt/lastAt, and non-1970 fallback dates', async () => {
+  const fixedNow = new Date(2026, 10, 17, 15, 30, 0).getTime()
+  const dayStart = new Date(2026, 10, 17).getTime()
+  const dayEnd = new Date(2026, 10, 18).getTime()
+  const days30Start = new Date(2026, 10, 17 - 29).getTime()
+  const days90Start = new Date(2026, 10, 17 - 89).getTime()
+  const localAt = (y, m, d, h = 12, min = 0) => new Date(y, m - 1, d, h, min, 0).getTime()
+
+  const events = [
+    { type: 'assistant/message', time: localAt(2025, 3, 10, 9, 15), data: { usage: { inputTokens: M }, message: { source: { provider: 'opencode-go', model: 'deepseek-v4.1-flash' } } } },
+    { type: 'assistant/message', time: localAt(2026, 9, 5, 14, 0), data: { usage: { inputTokens: M }, message: { source: { provider: 'opencode-go', model: 'deepseek-v4.1-flash' } } } },
+    { type: 'assistant/message', time: localAt(2026, 11, 1, 10, 30), data: { usage: { inputTokens: M }, message: { source: { provider: 'opencode-go', model: 'deepseek-v4.1-flash' } } } },
+    { type: 'assistant/message', time: localAt(2026, 11, 17, 11, 45), data: { usage: { inputTokens: M }, message: { source: { provider: 'opencode-go', model: 'deepseek-v4.1-flash' } } } },
+    { type: 'assistant/message', time: localAt(2026, 11, 18, 0, 5), data: { usage: { inputTokens: M }, message: { source: { provider: 'opencode-go', model: 'deepseek-v4.1-flash' } } } },
+  ]
+  const service = createReceiptService(context(events), {
+    catalog: staticCatalog(),
+    now: () => fixedNow,
+  })
+
+  const bill30 = await service.getBill({ from: days30Start, to: dayEnd, date: '2026-11-17', period: 'days30' })
+  assert.equal(bill30.period, 'days30')
+  assert.equal(bill30.totals.requests, 2)
+  assert.equal(bill30.firstAt, localAt(2026, 11, 1, 10, 30))
+  assert.equal(bill30.lastAt, localAt(2026, 11, 17, 11, 45))
+  assert.match(bill30.billNo, /^TR-30D-20261117-[0-9A-F]{4}$/)
+
+  const bill90 = await service.getBill({ from: days90Start, to: dayEnd, period: 'days90' })
+  assert.equal(bill90.period, 'days90')
+  assert.equal(bill90.date, '2026-11-17')
+  assert.equal(bill90.totals.requests, 3)
+  assert.equal(bill90.firstAt, localAt(2026, 9, 5, 14, 0))
+  assert.equal(bill90.lastAt, localAt(2026, 11, 17, 11, 45))
+  assert.match(bill90.billNo, /^TR-90D-20261117-[0-9A-F]{4}$/)
+
+  const billAll = await service.getBill({ from: 1, to: dayEnd, period: 'all' })
+  assert.equal(billAll.period, 'all')
+  assert.equal(billAll.date, '2026-11-17')
+  assert.equal(billAll.totals.requests, 4)
+  assert.equal(billAll.firstAt, localAt(2025, 3, 10, 9, 15))
+  assert.equal(billAll.lastAt, localAt(2026, 11, 17, 11, 45))
+  assert.match(billAll.billNo, /^TR-ALL-20261117-[0-9A-F]{4}$/)
+
+  const emptyWindow = await service.getBill({ from: localAt(2024, 1, 1), to: localAt(2024, 1, 2), date: '2024-01-01', period: 'day' })
+  assert.equal(emptyWindow.totals.requests, 0)
+  assert.equal(emptyWindow.firstAt, null)
+  assert.equal(emptyWindow.lastAt, null)
+
+  for (const [period, expectedFrom, expectedRequests, prefix] of [
+    ['days30', days30Start, 2, 'TR-30D-20261117-'],
+    ['days90', days90Start, 3, 'TR-90D-20261117-'],
+    ['all', 1, 4, 'TR-ALL-20261117-'],
+  ]) {
+    const res = mockResponse()
+    await service.handler({ method: 'GET', url: `/api/token-receipt?period=${period}` }, res)
+    assert.equal(res.status, 200)
+    const bill = JSON.parse(res.body.toString())
+    assert.equal(bill.period, period)
+    assert.equal(bill.from, expectedFrom)
+    assert.equal(bill.to, dayEnd)
+    assert.equal(bill.date, '2026-11-17')
+    assert.ok(!bill.date.startsWith('1970'), `fallback date must not be 1970 for ${period}`)
+    assert.equal(bill.totals.requests, expectedRequests)
+    assert.ok(bill.billNo.startsWith(prefix), `expected ${bill.billNo} to start with ${prefix}`)
+  }
+
+  const explicitRes = mockResponse()
+  await service.handler({
+    method: 'GET',
+    url: `/api/token-receipt?period=days90&from=${days90Start}&to=${dayEnd}&date=2026-Q4`,
+  }, explicitRes)
+  const explicitBill = JSON.parse(explicitRes.body.toString())
+  assert.equal(explicitBill.period, 'days90')
+  assert.equal(explicitBill.date, '2026-Q4')
+  assert.ok(explicitBill.billNo.startsWith('TR-90D-2026Q4-'))
+
+  const zeroFromAll = mockResponse()
+  await service.handler({ method: 'GET', url: '/api/token-receipt?period=all&from=0' }, zeroFromAll)
+  const zeroFromBill = JSON.parse(zeroFromAll.body.toString())
+  assert.equal(zeroFromBill.from, 1)
+  assert.equal(zeroFromBill.date, '2026-11-17')
+
+  const unknownPeriod = mockResponse()
+  await service.handler({ method: 'GET', url: '/api/token-receipt?period=bogus' }, unknownPeriod)
+  const unknownBill = JSON.parse(unknownPeriod.body.toString())
+  assert.equal(unknownBill.period, 'day')
+  assert.equal(unknownBill.from, dayStart)
+  assert.ok(unknownBill.billNo.startsWith('TR-D-20261117-'))
+
+  service.dispose()
+})
+
+test('historical sessions created months or years earlier are included in days90/all and bill firstAt/lastAt span beyond top-24 sessions', async () => {
+  const fixedNow = new Date(2026, 10, 17, 15, 30, 0).getTime()
+  const localAt = (y, m, d, h = 12, min = 0) => new Date(y, m - 1, d, h, min, 0).getTime()
+
+  const updatedOldPath = join(tmpdir(), `token-receipt-old-updated-${process.pid}-${Date.now()}.jsonl`)
+  const ancientPath = join(tmpdir(), `token-receipt-ancient-${process.pid}-${Date.now()}.jsonl`)
+  writeFileSync(updatedOldPath, '')
+  writeFileSync(ancientPath, '')
+  try {
+    const updatedSec = Math.floor(localAt(2026, 9, 8, 10, 0) / 1000)
+    const ancientSec = Math.floor(localAt(2024, 2, 10, 8, 0) / 1000)
+    utimesSync(updatedOldPath, updatedSec, updatedSec)
+    utimesSync(ancientPath, ancientSec, ancientSec)
+
+    const sessions = [
+      {
+        id: 'ancient-2024',
+        createdAt: localAt(2024, 2, 10, 8, 0),
+        path: ancientPath,
+        events: [{ type: 'assistant/message', time: localAt(2024, 2, 10, 8, 5), data: { usage: { inputTokens: 100 }, message: { source: { provider: 'opencode-go', model: 'deepseek-v4.1-flash' } } } }],
+      },
+      {
+        id: 'old-created-recent-activity',
+        createdAt: localAt(2024, 6, 1, 9, 0),
+        path: updatedOldPath,
+        events: [{ type: 'assistant/message', time: localAt(2026, 9, 8, 10, 0), data: { usage: { inputTokens: 200 }, message: { source: { provider: 'opencode-go', model: 'deepseek-v4.1-flash' } } } }],
+      },
+      {
+        id: 'months-ago-90d',
+        createdAt: localAt(2026, 9, 1, 9, 0),
+        events: [{ type: 'assistant/message', time: localAt(2026, 9, 1, 9, 15), data: { usage: { inputTokens: 300 }, message: { source: { provider: 'opencode-go', model: 'deepseek-v4.1-flash' } } } }],
+      },
+      {
+        id: 'latest-low-tokens',
+        createdAt: localAt(2026, 11, 17, 15, 0),
+        events: [{ type: 'assistant/message', time: localAt(2026, 11, 17, 15, 10), data: { usage: { inputTokens: 50 }, message: { source: { provider: 'opencode-go', model: 'deepseek-v4.1-flash' } } } }],
+      },
+    ]
+    for (let i = 0; i < 24; i += 1) {
+      sessions.push({
+        id: `heavy-${i}`,
+        createdAt: localAt(2026, 11, 10, 12, 0),
+        events: [{ type: 'assistant/message', time: localAt(2026, 11, 10, 12, i), data: { usage: { inputTokens: 10_000 + i }, message: { source: { provider: 'opencode-go', model: 'deepseek-v4.1-flash' } } } }],
+      })
+    }
+
+    const byId = new Map(sessions.map((s) => [s.id, s]))
+    const query = {
+      listSessions: async () => sessions.map((s) => ({ header: { id: s.id, createdAt: s.createdAt } })),
+      readSession: async (id) => ({ events: byId.get(id).events, inheritedEventCount: 0 }),
+    }
+    const persistence = {
+      list: async () => sessions.map((s) => ({
+        header: { id: s.id },
+        revision: 1,
+        ...(s.path ? { location: { path: s.path } } : {}),
+      })),
+    }
+
+    const service = createReceiptService({
+      get: (name) => name === 'sessionQuery' ? query : name === 'sessionPersistence' ? persistence : undefined,
+    }, { catalog: staticCatalog(), now: () => fixedNow })
+
+    const res30 = mockResponse()
+    await service.handler({ method: 'GET', url: '/api/token-receipt?period=days30' }, res30)
+    const bill30 = JSON.parse(res30.body.toString())
+    assert.equal(bill30.totals.sessions, 25)
+    assert.equal(bill30.sessions.length, 24)
+    assert.equal(bill30.firstAt, localAt(2026, 11, 10, 12, 0))
+    assert.equal(bill30.lastAt, localAt(2026, 11, 17, 15, 10), 'lastAt includes low-token session sliced out of top-24 sessions')
+
+    const res90 = mockResponse()
+    await service.handler({ method: 'GET', url: '/api/token-receipt?period=days90' }, res90)
+    const bill90 = JSON.parse(res90.body.toString())
+    assert.equal(bill90.totals.sessions, 27)
+    assert.equal(bill90.firstAt, localAt(2026, 9, 1, 9, 15))
+    assert.equal(bill90.lastAt, localAt(2026, 11, 17, 15, 10))
+
+    const resAll = mockResponse()
+    await service.handler({ method: 'GET', url: '/api/token-receipt?period=all' }, resAll)
+    const billAll = JSON.parse(resAll.body.toString())
+    assert.equal(billAll.totals.sessions, 28)
+    assert.equal(billAll.firstAt, localAt(2024, 2, 10, 8, 5))
+    assert.equal(billAll.lastAt, localAt(2026, 11, 17, 15, 10))
+    assert.equal(billAll.date, '2026-11-17')
+    assert.ok(billAll.billNo.startsWith('TR-ALL-20261117-'))
+    service.dispose()
+
+    const emptyService = createReceiptService(context([]), { catalog: staticCatalog(), now: () => fixedNow })
+    const emptyAll = mockResponse()
+    await emptyService.handler({ method: 'GET', url: '/api/token-receipt?period=all' }, emptyAll)
+    const emptyBill = JSON.parse(emptyAll.body.toString())
+    assert.equal(emptyBill.totals.requests, 0)
+    assert.equal(emptyBill.firstAt, null)
+    assert.equal(emptyBill.lastAt, null)
+    assert.equal(emptyBill.date, '2026-11-17')
+    assert.ok(emptyBill.billNo.startsWith('TR-ALL-20261117-'))
+    emptyService.dispose()
+  } finally {
+    try { unlinkSync(updatedOldPath) } catch {}
+    try { unlinkSync(ancientPath) } catch {}
+  }
+})

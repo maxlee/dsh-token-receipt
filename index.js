@@ -14,6 +14,19 @@ const DAY_MS = 24 * 60 * 60 * 1000
 const MAX_TS = 8_640_000_000_000_000
 const CACHE_TTL_MS = 10_000
 const RECENT_DAYS = 3
+const VALID_PERIODS = new Set(['day', 'week', 'month', 'days30', 'days90', 'all'])
+const PERIOD_CODES = new Map([
+  ['day', 'D'],
+  ['week', 'W'],
+  ['month', 'M'],
+  ['days30', '30D'],
+  ['days90', '90D'],
+  ['all', 'ALL'],
+])
+const PERIOD_LOOKBACK_DAYS = new Map([
+  ['days30', 29],
+  ['days90', 89],
+])
 
 export const name = 'token-receipt'
 export const inject = ['webServer']
@@ -39,6 +52,28 @@ function localDayBounds(now = new Date()) {
   const from = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
   const to = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).getTime()
   return { from, to }
+}
+
+/** Compute default [from, to) local-time bounds for a validated receipt period. */
+function defaultPeriodBounds(period, nowDate) {
+  const dayBounds = localDayBounds(nowDate)
+  const lookback = PERIOD_LOOKBACK_DAYS.get(period)
+  if (lookback !== undefined) {
+    return {
+      from: new Date(nowDate.getFullYear(), nowDate.getMonth(), nowDate.getDate() - lookback).getTime(),
+      to: dayBounds.to,
+    }
+  }
+  if (period === 'all') return { from: 1, to: dayBounds.to }
+  return dayBounds
+}
+
+/** Resolve the fallback YYYY-MM-DD label using the inclusive end date for rolling/all-time windows. */
+function defaultDateLabel(period, from, to) {
+  if (period === 'days30' || period === 'days90' || period === 'all') {
+    return compactDate(to - 1)
+  }
+  return compactDate(from)
 }
 
 function parseTs(raw) {
@@ -272,6 +307,8 @@ async function computeBill(ctx, from, to, dateLabel, period, state, snapshot) {
   const modelMap = new Map()
   const pricing = createPricingAccumulator(snapshot)
   const sessionRows = []
+  let billFirstAt = 0
+  let billLastAt = 0
 
   for (const row of rows) {
     let requests = 0
@@ -294,6 +331,8 @@ async function computeBill(ctx, from, to, dateLabel, period, state, snapshot) {
       reasoning += message.reasoning
       firstAt = firstAt === 0 || message.time < firstAt ? message.time : firstAt
       lastAt = message.time > lastAt ? message.time : lastAt
+      billFirstAt = billFirstAt === 0 || message.time < billFirstAt ? message.time : billFirstAt
+      billLastAt = message.time > billLastAt ? message.time : billLastAt
       const key = `${message.provider}\u0000${message.model}`
       const existing = modelMap.get(key) || {
         provider: message.provider, model: message.model, total: 0, input: 0, output: 0,
@@ -334,8 +373,8 @@ async function computeBill(ctx, from, to, dateLabel, period, state, snapshot) {
 
   }
 
-  const date = dateLabel || compactDate(from)
-  const periodCode = period === 'week' ? 'W' : period === 'month' ? 'M' : 'D'
+  const date = dateLabel || defaultDateLabel(period, from, to)
+  const periodCode = PERIOD_CODES.get(period) || 'D'
   const billNo = `TR-${periodCode}-${date.replaceAll('-', '')}-${hashSuffix(`${period}:${date}:${totals.totalTokens}:${totals.requests}`)}`
 
   return {
@@ -344,6 +383,8 @@ async function computeBill(ctx, from, to, dateLabel, period, state, snapshot) {
     period,
     from,
     to,
+    firstAt: billFirstAt > 0 ? billFirstAt : null,
+    lastAt: billLastAt > 0 ? billLastAt : null,
     generatedAt: state.now(),
     billNo,
     totals,
@@ -403,7 +444,9 @@ export function createReceiptService(ctx, options = {}) {
     } catch {
       return sendJson(res, 400, { ok: false, error: 'Invalid request.' }, headOnly)
     }
-    const defaultBounds = localDayBounds(new Date(now()))
+    const requestedPeriod = url.searchParams.get('period')
+    const period = VALID_PERIODS.has(requestedPeriod) ? requestedPeriod : 'day'
+    const defaultBounds = defaultPeriodBounds(period, new Date(now()))
     const from = parseTs(url.searchParams.get('from'))
     const to = parseTs(url.searchParams.get('to'))
     let safeFrom = Number.isFinite(from) ? from : defaultBounds.from
@@ -415,9 +458,7 @@ export function createReceiptService(ctx, options = {}) {
       safeTo = defaultBounds.to
     }
     const rawDate = url.searchParams.get('date')?.trim() ?? ''
-    const dateLabel = /^[A-Za-z0-9-]{1,32}$/.test(rawDate) ? rawDate : compactDate(safeFrom)
-    const requestedPeriod = url.searchParams.get('period')
-    const period = requestedPeriod === 'week' || requestedPeriod === 'month' ? requestedPeriod : 'day'
+    const dateLabel = /^[A-Za-z0-9-]{1,32}$/.test(rawDate) ? rawDate : defaultDateLabel(period, safeFrom, safeTo)
     const refresh = url.searchParams.get('refresh')
     try {
       const bill = await getBill({ from: safeFrom, to: safeTo, date: dateLabel, period, force: refresh === '1' })
