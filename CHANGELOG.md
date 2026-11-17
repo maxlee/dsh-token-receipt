@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented in this file.
 
+## 1.2.0
+
+Released on 2026-11-17.
+
+- Show the full receipt generation timestamp with year, month, day, hour, minute, and second.
+- Remove the fixed `1 USD ≈ 6.67 CNY` exchange-rate note from CNY receipts.
+- Increase receipt paper font sizes by 1–2px across headings, model rows, totals, metadata, and barcode text for better readability.
+
 ## 1.1.1
 
 Released on 2026-11-17.

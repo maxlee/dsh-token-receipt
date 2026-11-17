@@ -11,7 +11,7 @@ window.__ModuleLoader__.load({
     const NS = 'token-receipt'
     const PANEL = 'token-receipt'
     /** Kept in sync with package.json by tests/version-guard.test.js. */
-    const CLIENT_VERSION = '1.1.1'
+    const CLIENT_VERSION = '1.2.0'
     const DAY_MS = 24 * 60 * 60 * 1000
     const MIN_PROCESSING_MS = 850
     const EXPORT_SCALE = 3
@@ -101,7 +101,6 @@ window.__ModuleLoader__.load({
         partialPrice: '有 {n} 次请求未计价，金额为部分小计。',
         unavailablePrice: '价格暂不可用，用量已保留。',
         stalePrice: '使用上次获取的价格，稍后可重试。',
-        exchangeRate: '人民币按 1 USD ≈ 6.67 CNY 换算。',
         unpriced: '未计价',
         priceRetry: '重新获取价格',
         fetchError: '读取用量失败',
@@ -177,7 +176,6 @@ window.__ModuleLoader__.load({
         partialPrice: '{n} requests unpriced; subtotal excludes them.',
         unavailablePrice: 'Prices unavailable. Usage is still recorded.',
         stalePrice: 'Using previously fetched prices. Retry to refresh.',
-        exchangeRate: 'CNY converted at 1 USD ≈ 6.67 CNY.',
         unpriced: 'Unpriced',
         priceRetry: 'Retry prices',
         fetchError: 'Could not read usage',
@@ -253,7 +251,6 @@ window.__ModuleLoader__.load({
         partialPrice: "{n} 件は料金未計算のため、小計に含まれません。",
         unavailablePrice: "料金を取得できません。使用量は保持されています。",
         stalePrice: "前回取得した料金を使用中です。後ほど再試行してください。",
-        exchangeRate: "人民元は 1 USD ≈ 6.67 CNY で換算。",
         unpriced: "料金未計算",
         priceRetry: "料金を再取得",
         fetchError: "使用量を読み込めませんでした",
@@ -471,39 +468,39 @@ body[data-ds-dark-theme] .tr-slot { border-color: var(--tr-g1); background: var(
   100% { transform: translateY(0); }
 }
 
-.tr-paper { position: relative; z-index: 1; width: 100%; min-height: 20rem; padding: 28px 24px 32px; background-color: var(--tr-paper-bg); background-image: url("data:image/svg+xml;base64,${PAPER_TEXTURE}"); background-size: cover; background-blend-mode: soft-light; color: var(--tr-paper-ink); font-family: "TokenReceiptMono", "JetBrains Mono", "JetBrains Mono Fallback", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 16px; clip-path: polygon(0 0, 100% 0, 100% calc(100% - 4px), 98.75% 100%, 97.5% calc(100% - 4px), 96.25% 100%, 95% calc(100% - 4px), 93.75% 100%, 92.5% calc(100% - 4px), 91.25% 100%, 90% calc(100% - 4px), 88.75% 100%, 87.5% calc(100% - 4px), 86.25% 100%, 85% calc(100% - 4px), 83.75% 100%, 82.5% calc(100% - 4px), 81.25% 100%, 80% calc(100% - 4px), 78.75% 100%, 77.5% calc(100% - 4px), 76.25% 100%, 75% calc(100% - 4px), 73.75% 100%, 72.5% calc(100% - 4px), 71.25% 100%, 70% calc(100% - 4px), 68.75% 100%, 67.5% calc(100% - 4px), 66.25% 100%, 65% calc(100% - 4px), 63.75% 100%, 62.5% calc(100% - 4px), 61.25% 100%, 60% calc(100% - 4px), 58.75% 100%, 57.5% calc(100% - 4px), 56.25% 100%, 55% calc(100% - 4px), 53.75% 100%, 52.5% calc(100% - 4px), 51.25% 100%, 50% calc(100% - 4px), 48.75% 100%, 47.5% calc(100% - 4px), 46.25% 100%, 45% calc(100% - 4px), 43.75% 100%, 42.5% calc(100% - 4px), 41.25% 100%, 40% calc(100% - 4px), 38.75% 100%, 37.5% calc(100% - 4px), 36.25% 100%, 35% calc(100% - 4px), 33.75% 100%, 32.5% calc(100% - 4px), 31.25% 100%, 30% calc(100% - 4px), 28.75% 100%, 27.5% calc(100% - 4px), 26.25% 100%, 25% calc(100% - 4px), 23.75% 100%, 22.5% calc(100% - 4px), 21.25% 100%, 20% calc(100% - 4px), 18.75% 100%, 17.5% calc(100% - 4px), 16.25% 100%, 15% calc(100% - 4px), 13.75% 100%, 12.5% calc(100% - 4px), 11.25% 100%, 10% calc(100% - 4px), 8.75% 100%, 7.5% calc(100% - 4px), 6.25% 100%, 5% calc(100% - 4px), 3.75% 100%, 2.5% calc(100% - 4px), 1.25% 100%, 0% calc(100% - 4px)); }
+.tr-paper { position: relative; z-index: 1; width: 100%; min-height: 20rem; padding: 28px 24px 32px; background-color: var(--tr-paper-bg); background-image: url("data:image/svg+xml;base64,${PAPER_TEXTURE}"); background-size: cover; background-blend-mode: soft-light; color: var(--tr-paper-ink); font-family: "TokenReceiptMono", "JetBrains Mono", "JetBrains Mono Fallback", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 18px; clip-path: polygon(0 0, 100% 0, 100% calc(100% - 4px), 98.75% 100%, 97.5% calc(100% - 4px), 96.25% 100%, 95% calc(100% - 4px), 93.75% 100%, 92.5% calc(100% - 4px), 91.25% 100%, 90% calc(100% - 4px), 88.75% 100%, 87.5% calc(100% - 4px), 86.25% 100%, 85% calc(100% - 4px), 83.75% 100%, 82.5% calc(100% - 4px), 81.25% 100%, 80% calc(100% - 4px), 78.75% 100%, 77.5% calc(100% - 4px), 76.25% 100%, 75% calc(100% - 4px), 73.75% 100%, 72.5% calc(100% - 4px), 71.25% 100%, 70% calc(100% - 4px), 68.75% 100%, 67.5% calc(100% - 4px), 66.25% 100%, 65% calc(100% - 4px), 63.75% 100%, 62.5% calc(100% - 4px), 61.25% 100%, 60% calc(100% - 4px), 58.75% 100%, 57.5% calc(100% - 4px), 56.25% 100%, 55% calc(100% - 4px), 53.75% 100%, 52.5% calc(100% - 4px), 51.25% 100%, 50% calc(100% - 4px), 48.75% 100%, 47.5% calc(100% - 4px), 46.25% 100%, 45% calc(100% - 4px), 43.75% 100%, 42.5% calc(100% - 4px), 41.25% 100%, 40% calc(100% - 4px), 38.75% 100%, 37.5% calc(100% - 4px), 36.25% 100%, 35% calc(100% - 4px), 33.75% 100%, 32.5% calc(100% - 4px), 31.25% 100%, 30% calc(100% - 4px), 28.75% 100%, 27.5% calc(100% - 4px), 26.25% 100%, 25% calc(100% - 4px), 23.75% 100%, 22.5% calc(100% - 4px), 21.25% 100%, 20% calc(100% - 4px), 18.75% 100%, 17.5% calc(100% - 4px), 16.25% 100%, 15% calc(100% - 4px), 13.75% 100%, 12.5% calc(100% - 4px), 11.25% 100%, 10% calc(100% - 4px), 8.75% 100%, 7.5% calc(100% - 4px), 6.25% 100%, 5% calc(100% - 4px), 3.75% 100%, 2.5% calc(100% - 4px), 1.25% 100%, 0% calc(100% - 4px)); }
 .tr-page:lang(ja) { font-family: "TokenReceiptInter", Inter, "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, "Noto Sans JP", sans-serif; }
 .tr-page:lang(ja) .tr-paper { font-family: "TokenReceiptMono", "JetBrains Mono", "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, "Noto Sans JP", monospace; }
 .tr-paper-head { text-align: center; }
 .tr-paper-logo { display: block; width: 40px; height: 40px; margin: 0 auto; color: var(--tr-paper-ink); opacity: .9; }
-.tr-paper-kicker { margin: 13px 0 0; font-size: 9px; font-weight: 700; letter-spacing: .22em; text-transform: uppercase; }
-.tr-paper-date { margin: 4px 0 0; color: var(--tr-paper-ink); opacity: .55; font-size: 9px; letter-spacing: .09em; text-transform: uppercase; }
+.tr-paper-kicker { margin: 13px 0 0; font-size: 11px; font-weight: 700; letter-spacing: .22em; text-transform: uppercase; }
+.tr-paper-date { margin: 4px 0 0; color: var(--tr-paper-ink); opacity: .55; font-size: 11px; letter-spacing: .09em; text-transform: uppercase; }
 .tr-rule { margin: 20px 0; border-top: 1px dashed color-mix(in oklab, var(--tr-paper-ink) 25%, transparent); }
 .tr-rule.tight { margin: 16px 0; }
-.tr-section-label { margin: 0 0 7px; color: var(--tr-paper-ink); opacity: .55; font-size: 9px; font-weight: 700; letter-spacing: .72px; text-transform: uppercase; }
+.tr-section-label { margin: 0 0 7px; color: var(--tr-paper-ink); opacity: .55; font-size: 11px; font-weight: 700; letter-spacing: .72px; text-transform: uppercase; }
 .tr-items { display: flex; flex-direction: column; gap: 9px; }
 .tr-item-block { min-width: 0; }
-.tr-item-detail { margin: 0; font-size: 9px; line-height: 16px; opacity: .55; }
+.tr-item-detail { margin: 0; font-size: 11px; line-height: 17px; opacity: .55; }
 .tr-price-notes { margin-top: 12px; }
-.tr-price-notes p { margin: 0; font-size: 7px; line-height: 12px; opacity: .55; overflow-wrap: anywhere; }
-.tr-item { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; font-size: 9px; line-height: 16px; }
+.tr-price-notes p { margin: 0; font-size: 9px; line-height: 13px; opacity: .55; overflow-wrap: anywhere; }
+.tr-item { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; font-size: 11px; line-height: 17px; }
 .tr-item-name { min-width: 0; flex: 1; letter-spacing: .08em; text-transform: uppercase; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
 .tr-item-value { flex: none; font-variant-numeric: tabular-nums; font-weight: 700; }
-.tr-empty { padding: 6px 0; text-align: center; color: var(--tr-paper-ink); opacity: .55; font-size: 9px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+.tr-empty { padding: 6px 0; text-align: center; color: var(--tr-paper-ink); opacity: .55; font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
 .tr-summary { display: flex; flex-direction: column; gap: 6px; margin: 0; }
-.tr-summary-row { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; font-size: 9px; line-height: 9px; }
+.tr-summary-row { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; font-size: 11px; line-height: 11px; }
 .tr-summary-row dt { margin: 0; color: var(--tr-paper-ink); opacity: .55; }
 .tr-summary-row dd { margin: 0; font-variant-numeric: tabular-nums; }
 .tr-total { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; padding-top: 8px; }
-.tr-total dt { margin: 0; font-size: 10px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; }
-.tr-total dd { margin: 0; white-space: nowrap; font-size: 15px; font-weight: 700; line-height: 15px; letter-spacing: -.6px; font-variant-numeric: tabular-nums; }
-.tr-meta { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 4px 16px; font-size: 8px; line-height: 12px; }
+.tr-total dt { margin: 0; font-size: 12px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; }
+.tr-total dd { margin: 0; white-space: nowrap; font-size: 17px; font-weight: 700; line-height: 17px; letter-spacing: -.6px; font-variant-numeric: tabular-nums; }
+.tr-meta { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 4px 16px; font-size: 9px; line-height: 12px; }
 .tr-meta dt { margin: 0; color: var(--tr-paper-ink); opacity: .55; }
 .tr-meta dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
 .tr-barcodewrap { margin-top: 14px; text-align: center; }
 .tr-barcode { width: 128px; height: 28px; margin: 0 auto; background-image: repeating-linear-gradient(90deg, currentColor 0 1px, transparent 1px 3px, currentColor 3px 5px, transparent 5px 7px, currentColor 7px 8px, transparent 8px 11px); opacity: .85; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-.tr-barcode-label { margin: 4px 0 0; color: var(--tr-paper-ink); opacity: .5; font-size: 7px; line-height: 10.5px; letter-spacing: 1.26px; text-transform: uppercase; }
-.tr-thanks { margin: 8px 0 0; text-align: center; color: var(--tr-paper-ink); opacity: .5; font-size: 7px; font-weight: 600; letter-spacing: .16em; text-transform: uppercase; }
+.tr-barcode-label { margin: 4px 0 0; color: var(--tr-paper-ink); opacity: .5; font-size: 9px; line-height: 12px; letter-spacing: 1.26px; text-transform: uppercase; }
+.tr-thanks { margin: 8px 0 0; text-align: center; color: var(--tr-paper-ink); opacity: .5; font-size: 9px; font-weight: 600; letter-spacing: .16em; text-transform: uppercase; }
 
 .tr-error { width: 100%; max-width: 540px; margin: 14px auto 0; padding: 13px 16px; border: 1px solid color-mix(in srgb, #e5484d 34%, var(--tr-g3)); border-radius: 10px; background: color-mix(in srgb, #e5484d 7%, var(--tr-g2)); color: var(--tr-page-ink); font-size: 12.5px; line-height: 1.5; text-align: center; }
 .tr-sr-only { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden !important; clip: rect(0, 0, 0, 0) !important; white-space: nowrap !important; border: 0 !important; }
@@ -883,6 +880,13 @@ body[data-ds-dark-theme] .tr-slot { border-color: var(--tr-g1); background: var(
       return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
     }
 
+    function dateTime(date, locale) {
+      const lang = normalizeLocale(locale)
+      const time = `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
+      if (lang === 'zh' || lang === 'ja') return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日 ${time}`
+      return `${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} ${time}`
+    }
+
     function shortDate(date, locale) {
       const lang = normalizeLocale(locale)
       if (lang === 'zh' || lang === 'ja') return `${date.getMonth() + 1}月${date.getDate()}日`
@@ -1084,7 +1088,7 @@ body[data-ds-dark-theme] .tr-slot { border-color: var(--tr-g1); background: var(
       const rangeEnd = new Date(data.to)
       const displayStart = resolveDisplayStart(period, rangeStart, data)
       const issued = new Date(data.generatedAt)
-      const issuedText = Number.isNaN(issued.getTime()) ? '—' : `${pad(issued.getHours())}:${pad(issued.getMinutes())}`
+      const issuedText = Number.isNaN(issued.getTime()) ? '—' : dateTime(issued, lang)
       const billNo = billNumber(period, data.date, totals.totalTokens, totals.requests)
       const partial = pricing?.status === 'partial'
       const hasPrice = typeof pricing?.totalUsd === 'number' && Number.isFinite(pricing.totalUsd)
@@ -1092,7 +1096,6 @@ body[data-ds-dark-theme] .tr-slot { border-color: var(--tr-g1); background: var(
       if (!hasPrice) notes.push(copy.unavailablePrice)
       else if (partial) notes.push(copy.partialPrice.replace('{n}', pricing.unpricedRequests))
       if (pricing?.stale) notes.push(copy.stalePrice)
-      if (currency === 'cny') notes.push(copy.exchangeRate)
       if (currency === 'jpy') notes.push(copy.exchangeRateJpy.replace('{rate}', DISPLAY_RATES.jpy).replace('{date}', JPY_RATE_DATE))
       const modelRow = (model) => h(
         'div',

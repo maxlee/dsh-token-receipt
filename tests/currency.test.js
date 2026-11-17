@@ -528,7 +528,7 @@ test('PNG export aborts before rendering if language, currency, or connection ch
 
 test('all three language dictionaries include matching keys and sorted placeholders with dead keys removed', () => {
   const keys = Object.keys(DICT.en).sort()
-  const removedKeys = ['daily', 'weekly', 'monthly', 'printPaper', 'total', 'models', 'emptyHint', 'referencePrice', 'fallbackPrice', 'priceAsOf']
+  const removedKeys = ['daily', 'weekly', 'monthly', 'printPaper', 'total', 'models', 'emptyHint', 'referencePrice', 'fallbackPrice', 'priceAsOf', 'exchangeRate']
   for (const dead of removedKeys) {
     assert.equal(Object.hasOwn(DICT.en, dead), false, `dead key ${dead} should be removed`)
   }
@@ -657,6 +657,33 @@ test('Receipt guards invalid generatedAt and uses lowercase requests on model de
   const dds = findAll(tree, (n) => n.type === 'dd').map(textOf)
   assert.equal(dds.some((val) => val.includes('NaN')), false)
   assert.ok(dds.includes('—'))
+})
+
+test('Receipt prints a full year-month-day hour-minute-second timestamp and no fixed CNY exchange note', () => {
+  const generated = new Date(2026, 10, 17, 9, 8, 7)
+  const bill = sampleBill({ generatedAt: generated.getTime() })
+  const zhTree = expand(React.createElement(Receipt, {
+    copy: DICT.zh,
+    locale: 'zh-CN',
+    data: bill,
+    period: 'day',
+    currency: 'cny',
+  }))
+  const zhValues = findAll(zhTree, (n) => n.type === 'dd').map(textOf)
+  assert.ok(zhValues.includes('2026年11月17日 09:08:07'))
+  assert.equal(textOf(zhTree).includes('人民币按'), false)
+  assert.equal(Object.hasOwn(DICT.zh, 'exchangeRate'), false)
+  assert.equal(findAll(zhTree, (n) => n.props?.className === 'tr-price-notes').length, 0)
+
+  const enTree = expand(React.createElement(Receipt, {
+    copy: DICT.en,
+    locale: 'en-US',
+    data: bill,
+    period: 'day',
+    currency: 'usd',
+  }))
+  const enValues = findAll(enTree, (n) => n.type === 'dd').map(textOf)
+  assert.ok(enValues.includes('Nov 17, 2026 09:08:07'))
 })
 
 test('collectWrappedLines and exportReceiptPng handle mixed CJK + ASCII offsets, surrogate pairs, localized errors, and post-toBlob disconnect', async () => {
