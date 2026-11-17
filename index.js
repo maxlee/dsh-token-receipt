@@ -6,10 +6,12 @@
  * half renders the receipt printer; only the public model price catalogue is fetched.
  */
 
-import { statSync } from 'node:fs'
+import { readFileSync, statSync } from 'node:fs'
 import { createPricingCatalog, createPricingAccumulator } from './pricing.js'
 
 const ROUTE = '/api/token-receipt'
+/** The installed package version, served to the browser half for update detection. */
+export const PACKAGE_VERSION = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')).version
 const DAY_MS = 24 * 60 * 60 * 1000
 const MAX_TS = 8_640_000_000_000_000
 const CACHE_TTL_MS = 10_000
@@ -443,6 +445,11 @@ export function createReceiptService(ctx, options = {}) {
       url = new URL(req.url || '/', 'http://token-receipt.local')
     } catch {
       return sendJson(res, 400, { ok: false, error: 'Invalid request.' }, headOnly)
+    }
+    // A tiny, cache-free probe used by the browser half to notice a package update
+    // while the WebView still holds an older client bundle.
+    if (url.searchParams.get('version') === '1') {
+      return sendJson(res, 200, { ok: true, version: PACKAGE_VERSION }, headOnly)
     }
     const requestedPeriod = url.searchParams.get('period')
     const period = VALID_PERIODS.has(requestedPeriod) ? requestedPeriod : 'day'

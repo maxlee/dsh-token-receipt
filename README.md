@@ -63,6 +63,10 @@ Pass the local repository path to `plugin_manager`:
 
 If DeepSeek Harness reports `restart-required`, restart the app once to activate the plugin.
 
+### Updating on DSH Desktop
+
+After an update that changes the plugin's browser UI (`client.js`), fully quit DeepSeek Harness and reopen it. Closing the plugin panel, toggling the plugin, or closing the window is not enough: DSH Desktop loads browser plugin bundles only when the app window starts. Uninstalling and reinstalling is not required. Version 1.1.1 and later show a **Reload UI** banner when they detect that the installed version is newer than the loaded page.
+
 ## Usage
 
 1. Open **Token receipt** from the left sidebar.

@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented in this file.
 
+## 1.1.1
+
+Released on 2026-11-17.
+
+- Add a client/server version guard. The running panel now probes `/api/token-receipt?version=1` on startup, on window focus, and every 30 seconds; when the installed plugin is newer than the loaded browser bundle it shows a localized banner with a one-click **Reload UI** action instead of silently keeping old code.
+- Document the DSH Desktop update behavior: after updating a plugin's browser bundle, fully quit and reopen DeepSeek Harness; closing the plugin panel or toggling the plugin does not reload `client.js`.
+- Add a regression test that keeps the embedded client version in sync with `package.json`.
+
 ## 1.1.0
 
 Released on 2026-11-17.

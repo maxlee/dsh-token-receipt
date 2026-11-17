@@ -10,6 +10,8 @@ window.__ModuleLoader__.load({
     const h = React.createElement
     const NS = 'token-receipt'
     const PANEL = 'token-receipt'
+    /** Kept in sync with package.json by tests/version-guard.test.js. */
+    const CLIENT_VERSION = '1.1.1'
     const DAY_MS = 24 * 60 * 60 * 1000
     const MIN_PROCESSING_MS = 850
     const EXPORT_SCALE = 3
@@ -110,6 +112,8 @@ window.__ModuleLoader__.load({
         exportClosed: '导出完成前账单已关闭',
         exportChanged: '保存过程中语言或币种已变更，请重试。',
         exportFailed: '生成 PNG 失败',
+        updateAvailable: 'Token 账单已更新到 {version}，当前界面仍是旧版。',
+        updateReload: '刷新界面',
       },
       en: {
         nav: 'Token receipt',
@@ -184,6 +188,8 @@ window.__ModuleLoader__.load({
         exportClosed: 'Receipt was closed before export completed',
         exportChanged: 'Receipt language or currency changed while saving. Please retry.',
         exportFailed: 'Canvas export failed',
+        updateAvailable: 'Token receipt has been updated to {version}. This window is still showing the old version.',
+        updateReload: 'Reload UI',
       },
       ja: {
         nav: "トークン明細",
@@ -258,6 +264,8 @@ window.__ModuleLoader__.load({
         exportClosed: "出力完了前に明細が閉じられました",
         exportChanged: "保存中に言語または通貨が変更されました。もう一度お試しください。",
         exportFailed: "PNG の書き出しに失敗しました",
+        updateAvailable: 'Token レシートは {version} に更新されました。この画面はまだ旧バージョンです。',
+        updateReload: '画面を更新',
       },
     }
 
@@ -682,6 +690,78 @@ body[data-ds-dark-theme] .tr-slot { border-color: var(--tr-g1); background: var(
         out[key] = usable ? value : fallbackDict[key] || DICT.en[key]
       }
       return out
+    }
+
+    /**
+     * Watch the Host's package version while this page keeps running. DSH Desktop
+     * does not refresh an installed plugin's browser bundle in place, so when the
+     * Host has been updated this banner offers the page reload that activates it.
+     */
+    function installUpdateGuard(ctx) {
+      if (
+        typeof window === 'undefined' ||
+        typeof document === 'undefined' ||
+        typeof window.addEventListener !== 'function' ||
+        typeof window.removeEventListener !== 'function' ||
+        typeof document.createElement !== 'function' ||
+        !document.body
+      ) return undefined
+      let banner = null
+      let checking = false
+      let timer = null
+      const copy = translatedCopy(ctx)
+      const showBanner = (version) => {
+        if (banner !== null && String(banner.dataset.version) === version) return
+        const text = String(copy.updateAvailable || 'Token receipt has been updated to {version}.').replace('{version}', version)
+        if (banner === null) {
+          banner = document.createElement('div')
+          banner.id = 'dsh-token-receipt-update'
+          banner.setAttribute('role', 'status')
+          banner.setAttribute('data-token-receipt-update', '')
+          banner.style.cssText = 'position:fixed;z-index:2147483647;left:50%;bottom:20px;transform:translateX(-50%);display:flex;align-items:center;gap:12px;max-width:min(560px,calc(100vw - 32px));box-sizing:border-box;padding:10px 14px;border-radius:10px;border:1px solid var(--dsw-alias-border-l2,#3a3a3a);background:var(--dsw-alias-bg-layer-1,#1f1f1f);color:var(--dsw-alias-label-primary,#fff);box-shadow:0 8px 24px rgba(0,0,0,.28);font:500 13px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif'
+          const message = document.createElement('span')
+          message.setAttribute('data-token-receipt-update-message', '')
+          const button = document.createElement('button')
+          button.type = 'button'
+          button.setAttribute('data-token-receipt-update-reload', '')
+          button.style.cssText = 'flex:none;border:0;border-radius:7px;padding:5px 10px;background:var(--dsw-alias-label-primary,#fff);color:var(--dsw-alias-bg-layer-1,#1f1f1f);font:600 12px/1.3 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;cursor:pointer'
+          button.textContent = copy.updateReload || 'Reload UI'
+          button.addEventListener('click', () => window.location.reload())
+          banner.appendChild(message)
+          banner.appendChild(button)
+          document.body.appendChild(banner)
+        }
+        const message = banner.querySelector('[data-token-receipt-update-message]')
+        if (message !== null) message.textContent = text
+        banner.dataset.version = version
+      }
+      const check = async () => {
+        if (checking) return
+        checking = true
+        try {
+          const response = await fetch('/api/token-receipt?version=1', { cache: 'no-store', headers: { accept: 'application/json' } })
+          if (!response.ok) return
+          const payload = await response.json().catch(() => null)
+          const version = payload && payload.ok === true && typeof payload.version === 'string' ? payload.version : null
+          if (version !== null && version !== CLIENT_VERSION) showBanner(version)
+        } catch {
+          // A stale page must not throw because the host is restarting or the probe is unavailable.
+        } finally {
+          checking = false
+        }
+      }
+      const onFocus = () => { void check() }
+      const onVisibility = () => { if (document.visibilityState === 'visible') void check() }
+      timer = window.setInterval(check, 30000)
+      window.addEventListener('focus', onFocus)
+      document.addEventListener('visibilitychange', onVisibility)
+      void check()
+      return () => {
+        if (timer !== null) window.clearInterval(timer)
+        window.removeEventListener('focus', onFocus)
+        document.removeEventListener('visibilitychange', onVisibility)
+        if (banner !== null) { banner.remove(); banner = null }
+      }
     }
 
     function pad(n) {
@@ -1770,6 +1850,7 @@ body[data-ds-dark-theme] .tr-slot { border-color: var(--tr-g1); background: var(
     }
 
     function apply(ctx) {
+      ctx.effect(() => installUpdateGuard(ctx), 'token-receipt: update guard')
       ctx.effect(() => {
         if (typeof document === 'undefined' || !document.head || typeof document.createElement !== 'function') return
         const existing = typeof document.getElementById === 'function' ? document.getElementById('dsh-token-receipt-fonts') : null

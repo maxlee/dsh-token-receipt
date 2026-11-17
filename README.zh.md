@@ -63,6 +63,10 @@ dsh-token-receipt
 
 如果 DeepSeek Harness 提示 `restart-required`，重启一次应用即可启用插件。
 
+### 在 DSH Desktop 上更新
+
+如果更新包含浏览器端界面（`client.js`），请完全退出 DeepSeek Harness 后重新打开。仅关闭插件页面、禁用/启用插件或关闭窗口都不够：DSH Desktop 只会在应用窗口启动时加载浏览器端的插件 bundle。不需要卸载重装。1.1.1 及以后版本检测到「已安装版本比当前页面新」时，会显示带 **刷新界面** 按钮的提示。
+
 ## 使用
 
 1. 在左侧边栏打开 **Token 账单**。

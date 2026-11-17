@@ -1,6 +1,6 @@
 {
   "name": "dsh-token-receipt",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "private": false,
   "description": "Print daily, weekly, monthly, 30-day, 90-day, or all-time token usage and estimated model costs as a tactile receipt, with clipboard copy and PNG export.",
   "type": "module",
