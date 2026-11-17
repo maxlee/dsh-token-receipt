@@ -40,18 +40,26 @@ window.__ModuleLoader__.load({
       zh: {
         nav: 'Token 账单',
         title: 'Token 账单',
-        subtitle: '把 token 用量打印成一张有手感的小票。选择日、周或月，打印后还能保存 PNG。',
+        subtitle: '把 token 用量打印成一张有手感的小票。选择统计周期，打印后可复制图片或保存 PNG。',
         print: '打印账单',
         again: '重播打印',
         printingButton: '打印中…',
+        copyImage: '复制图片',
+        copyingImage: '复制中…',
+        copiedImage: '已复制',
+        copyFailed: '复制失败',
+        clipboardUnsupported: '当前环境不支持复制图片到剪贴板',
         savePng: '保存 PNG',
-        printPaper: '打印 / PDF',
         savingPng: '生成中…',
         savedPng: '已保存',
         saveFailed: '保存失败',
         day: '日',
         week: '周',
         month: '月',
+        days30: '近 30 天',
+        days90: '近 90 天',
+        all: '全部',
+        allTime: '全部时间',
         today: '今天',
         yesterday: '昨天',
         thisWeek: '本周',
@@ -106,18 +114,26 @@ window.__ModuleLoader__.load({
       en: {
         nav: 'Token receipt',
         title: 'Token receipt',
-        subtitle: 'Print token usage as a tactile receipt. Pick a day, week, or month, then print or save a PNG.',
+        subtitle: 'Print token usage as a tactile receipt. Pick a period, then copy the image or save a PNG.',
         print: 'Print bill',
         again: 'Replay print',
         printingButton: 'Printing…',
+        copyImage: 'Copy image',
+        copyingImage: 'Copying…',
+        copiedImage: 'Copied',
+        copyFailed: 'Copy failed',
+        clipboardUnsupported: 'Image clipboard copy is not supported in this browser',
         savePng: 'Save PNG',
-        printPaper: 'Print / PDF',
         savingPng: 'Rendering…',
         savedPng: 'Saved',
         saveFailed: 'Save failed',
         day: 'Day',
         week: 'Week',
         month: 'Month',
+        days30: '30 days',
+        days90: '90 days',
+        all: 'All',
+        allTime: 'All time',
         today: 'Today',
         yesterday: 'Yesterday',
         thisWeek: 'This week',
@@ -172,18 +188,26 @@ window.__ModuleLoader__.load({
       ja: {
         nav: "トークン明細",
         title: "トークン明細",
-        subtitle: "トークン使用量と推定料金をレシートに。日・週・月を選び、印刷や PNG 保存ができます。",
+        subtitle: "トークン使用量と推定料金をレシートに。期間を選び、画像のコピーや PNG 保存ができます。",
         print: "明細を印刷",
         again: "印刷を再生",
         printingButton: "印刷中…",
+        copyImage: "画像をコピー",
+        copyingImage: "コピー中…",
+        copiedImage: "コピーしました",
+        copyFailed: "コピーできませんでした",
+        clipboardUnsupported: "この環境では画像のクリップボードコピーに対応していません",
         savePng: "PNG を保存",
-        printPaper: "印刷 / PDF",
         savingPng: "生成中…",
         savedPng: "保存しました",
         saveFailed: "保存できませんでした",
         day: "日",
         week: "週",
         month: "月",
+        days30: "直近30日",
+        days90: "直近90日",
+        all: "全期間",
+        allTime: "全期間",
         today: "今日",
         yesterday: "昨日",
         thisWeek: "今週",
@@ -349,8 +373,8 @@ body[data-ds-dark-theme] .tr-page {
 .tr-currency select:focus-visible { outline: 2px solid var(--tr-g9); outline-offset: 2px; }
 .tr-price-feedback { display: flex; align-items: center; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 12px; color: var(--tr-page-muted); font-size: 11px; text-align: center; }
 .tr-controls { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; margin-bottom: 20px; }
-.tr-periods { display: inline-flex; padding: 3px; border: 1px solid var(--tr-g3); border-radius: 8px; background: var(--tr-g1); }
-.tr-periodbtn { height: 30px; padding: 0 16px; border: 0; border-radius: 7px; background: transparent; color: var(--tr-g11); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+.tr-periods { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px; border: 1px solid var(--tr-g3); border-radius: 8px; background: var(--tr-g1); }
+.tr-periodbtn { height: 30px; padding: 0 12px; border: 0; border-radius: 7px; background: transparent; color: var(--tr-g11); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
 .tr-periodbtn:hover:not(:disabled):not(.is-active) { background: var(--tr-g2); color: var(--tr-g12); }
 .tr-periodbtn:active:not(:disabled) { transform: translateY(1px); }
 .tr-periodbtn:disabled { opacity: .55; cursor: default; }
@@ -364,9 +388,10 @@ body[data-ds-dark-theme] .tr-page {
 .tr-navbtn:disabled { opacity: .35; cursor: default; }
 .tr-navbtn:focus-visible { outline: 2px solid var(--tr-g9); outline-offset: 2px; }
 .tr-datebox { position: relative; min-width: 132px; padding: 0 20px 0 7px; text-align: center; cursor: pointer; border-radius: 6px; }
+.tr-datebox.is-static { padding: 2px 12px; cursor: default; min-width: 132px; }
 .tr-datebox:focus-within { outline: 2px solid var(--tr-g9); outline-offset: 2px; }
 .tr-dateicon { position: absolute; top: 50%; right: 6px; display: grid; place-items: center; color: var(--tr-page-muted); pointer-events: none; transform: translateY(-50%); opacity: .75; }
-.tr-datebox:hover:not(:has(.tr-datepicker:disabled)) { background: var(--tr-g2); }
+.tr-datebox:not(.is-static):hover:not(:has(.tr-datepicker:disabled)) { background: var(--tr-g2); }
 .tr-datebox:has(.tr-datepicker:disabled) { opacity: .55; cursor: default; }
 .tr-datepicker { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; padding: 0; opacity: 0; cursor: pointer; }
 .tr-datepicker:disabled { cursor: default; }
@@ -579,6 +604,15 @@ body[data-ds-dark-theme] .tr-slot { border-color: var(--tr-g1); background: var(
       )
     }
 
+    function CopyIcon() {
+      return h(
+        'svg',
+        { width: 14, height: 14, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true },
+        h('rect', { x: 9, y: 9, width: 11, height: 11, rx: 2 }),
+        h('path', { d: 'M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1' }),
+      )
+    }
+
     function Spinner() {
       return h(
         'svg',
@@ -675,13 +709,31 @@ body[data-ds-dark-theme] .tr-slot { border-color: var(--tr-g1); background: var(
       return new Date(date.getFullYear(), date.getMonth(), 1)
     }
 
+    const PERIODS = ['day', 'week', 'month', 'days30', 'days90', 'all']
+
+    function isSteppablePeriod(period) {
+      return period === 'day' || period === 'week' || period === 'month'
+    }
+
     function shiftAnchor(period, anchor, delta) {
       if (period === 'week') return addDays(startOfWeek(anchor), delta * 7)
       if (period === 'month') return new Date(anchor.getFullYear(), anchor.getMonth() + delta, 1)
       return addDays(startOfDay(anchor), delta)
     }
 
-    function periodRange(period, anchor) {
+    function periodRange(period, anchor, now = new Date()) {
+      if (period === 'days30') {
+        const today = startOfDay(now)
+        return { start: addDays(today, -29), end: addDays(today, 1) }
+      }
+      if (period === 'days90') {
+        const today = startOfDay(now)
+        return { start: addDays(today, -89), end: addDays(today, 1) }
+      }
+      if (period === 'all') {
+        const today = startOfDay(now)
+        return { start: new Date(1), end: addDays(today, 1) }
+      }
       const start = period === 'week' ? startOfWeek(anchor) : period === 'month' ? startOfMonth(anchor) : startOfDay(anchor)
       let end
       if (period === 'week') end = addDays(start, 7)
@@ -737,8 +789,12 @@ body[data-ds-dark-theme] .tr-slot { border-color: var(--tr-g1); background: var(
       return date.getTime() > today.getTime() ? today : date
     }
 
-    function periodKey(period, start) {
-      return period === 'month' ? monthKey(start) : dateKey(start)
+    function periodKey(period, start, endExclusive) {
+      if (period === 'month') return monthKey(start)
+      if (period === 'days30' || period === 'days90' || period === 'all') {
+        return dateKey(addDays(endExclusive || addDays(startOfDay(new Date()), 1), -1))
+      }
+      return dateKey(start)
     }
 
     function fullDate(date, locale) {
@@ -764,22 +820,33 @@ body[data-ds-dark-theme] .tr-slot { border-color: var(--tr-g1); background: var(
       if (period === 'day') return fullDate(start, lang)
       if (period === 'month') return monthYear(start, lang)
       const last = addDays(endExclusive, -1)
+      if (period === 'all') {
+        if (!start || start.getTime() <= DAY_MS) return (DICT[lang] || DICT.en).allTime
+        if (start.getTime() >= last.getTime()) return fullDate(last, lang)
+      }
       if (lang === 'zh' || lang === 'ja') {
         const firstPart = `${start.getFullYear()}年${start.getMonth() + 1}月${start.getDate()}日`
         const secondYear = last.getFullYear() !== start.getFullYear() ? `${last.getFullYear()}年` : ''
         const secondPart = `${secondYear}${last.getMonth() + 1}月${last.getDate()}日`
         return lang === 'ja' ? `${firstPart}〜${secondPart}` : `${firstPart} – ${secondPart}`
       }
-      const first = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+      const firstOpts =
+        start.getFullYear() !== last.getFullYear()
+          ? { month: 'short', day: 'numeric', year: 'numeric' }
+          : { month: 'short', day: 'numeric' }
+      const first = start.toLocaleDateString('en-US', firstOpts)
       const second = last.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
       return `${first} – ${second}`
     }
 
     function periodName(period, copy) {
-      return period === 'week' ? copy.week : period === 'month' ? copy.month : copy.day
+      return Object.hasOwn(copy, period) && copy[period] ? copy[period] : copy.day
     }
 
     function relativeLabel(period, start, copy) {
+      if (period === 'days30') return copy.days30
+      if (period === 'days90') return copy.days90
+      if (period === 'all') return start && start.getTime() > DAY_MS ? copy.allTime : ''
       const now = new Date()
       if (period === 'day') {
         const diff = Math.round((startOfDay(now).getTime() - start.getTime()) / DAY_MS)
@@ -797,6 +864,13 @@ body[data-ds-dark-theme] .tr-slot { border-color: var(--tr-g1); background: var(
       if (diff === 0) return copy.thisMonth
       if (diff === 1) return copy.lastMonth
       return ''
+    }
+
+    function resolveDisplayStart(period, fallbackStart, data) {
+      if (period !== 'all') return fallbackStart
+      return typeof data?.firstAt === 'number' && Number.isFinite(data.firstAt) && data.firstAt > DAY_MS
+        ? startOfDay(new Date(data.firstAt))
+        : new Date(1)
     }
 
     function currentPeriodStart(period) {
@@ -832,7 +906,18 @@ body[data-ds-dark-theme] .tr-slot { border-color: var(--tr-g1); background: var(
     }
 
     function billNumber(period, date, total, requests) {
-      const code = period === 'week' ? 'W' : period === 'month' ? 'M' : 'D'
+      const code =
+        period === 'week'
+          ? 'W'
+          : period === 'month'
+            ? 'M'
+            : period === 'days30'
+              ? '30D'
+              : period === 'days90'
+                ? '90D'
+                : period === 'all'
+                  ? 'ALL'
+                  : 'D'
       return `TR-${code}-${String(date || '').replaceAll('-', '')}-${hashSuffix(`${period}:${date}:${total}:${requests}`)}`
     }
 
@@ -917,6 +1002,7 @@ body[data-ds-dark-theme] .tr-slot { border-color: var(--tr-g1); background: var(
       }
       const rangeStart = new Date(data.from)
       const rangeEnd = new Date(data.to)
+      const displayStart = resolveDisplayStart(period, rangeStart, data)
       const issued = new Date(data.generatedAt)
       const issuedText = Number.isNaN(issued.getTime()) ? '—' : `${pad(issued.getHours())}:${pad(issued.getMinutes())}`
       const billNo = billNumber(period, data.date, totals.totalTokens, totals.requests)
@@ -948,7 +1034,7 @@ body[data-ds-dark-theme] .tr-slot { border-color: var(--tr-g1); background: var(
           { className: 'tr-paper-head' },
           h('span', { className: 'tr-paper-logo' }, h(WhaleGlyph, { size: 40 })),
           h('p', { className: 'tr-paper-kicker' }, 'TOKEN RECEIPT'),
-          h('p', { className: 'tr-paper-date' }, periodLabel(period, rangeStart, rangeEnd, lang)),
+          h('p', { className: 'tr-paper-date' }, periodLabel(period, displayStart, rangeEnd, lang)),
         ),
         h('div', { className: 'tr-rule' }),
         h('p', { className: 'tr-section-label' }, copy.model),
@@ -1077,7 +1163,13 @@ body[data-ds-dark-theme] .tr-slot { border-color: var(--tr-g1); background: var(
       return lines
     }
 
-    async function exportReceiptPng(paperEl, billNo, copy) {
+    function errorMessage(error) {
+      if (error instanceof Error) return error.message
+      if (error && typeof error.message === 'string') return error.message
+      return String(error)
+    }
+
+    async function renderReceiptPngBlob(paperEl, copy) {
       const errCopy = copy || DICT.en
       if (!paperEl) throw new Error(errCopy.exportNotReady)
       const exportCurrency = paperEl.dataset.currency
@@ -1225,7 +1317,49 @@ body[data-ds-dark-theme] .tr-slot { border-color: var(--tr-g1); background: var(
         canvas.toBlob((value) => (value ? resolve(value) : reject(new Error(errCopy.exportFailed))), 'image/png'),
       )
       assertReceiptUnchanged()
+      return blob
+    }
+
+    async function exportReceiptPng(paperEl, billNo, copy) {
+      const blob = await renderReceiptPngBlob(paperEl, copy)
       downloadBlob(blob, `token-receipt-${billNo || 'bill'}.png`)
+    }
+
+    async function copyReceiptPng(paperEl, copy) {
+      const errCopy = copy || DICT.en
+      if (!paperEl) throw new Error(errCopy.exportNotReady)
+      const nav = typeof navigator !== 'undefined' ? navigator : typeof window !== 'undefined' ? window.navigator : undefined
+      const ClipboardItemCtor =
+        typeof ClipboardItem === 'function'
+          ? ClipboardItem
+          : typeof window !== 'undefined' && typeof window.ClipboardItem === 'function'
+            ? window.ClipboardItem
+            : null
+      if (!nav || !nav.clipboard || typeof nav.clipboard.write !== 'function' || !ClipboardItemCtor) {
+        throw new Error(errCopy.clipboardUnsupported)
+      }
+      const blobPromise = renderReceiptPngBlob(paperEl, errCopy)
+      // Attach a no-op rejection handler so synchronous ClipboardItem failures do not leak unhandled rejections.
+      blobPromise.catch(() => {})
+      let item = null
+      try {
+        item = new ClipboardItemCtor({ 'image/png': blobPromise })
+      } catch {
+        item = null
+      }
+      if (item) {
+        try {
+          await nav.clipboard.write([item])
+          return
+        } catch (err) {
+          const blob = await blobPromise
+          if (!(err instanceof TypeError) && err?.name !== 'TypeError') throw err
+          await nav.clipboard.write([new ClipboardItemCtor({ 'image/png': blob })])
+          return
+        }
+      }
+      const blob = await blobPromise
+      await nav.clipboard.write([new ClipboardItemCtor({ 'image/png': blob })])
     }
 
     function Panel(props) {
@@ -1237,30 +1371,42 @@ body[data-ds-dark-theme] .tr-slot { border-color: var(--tr-g1); background: var(
       const currency = resolveCurrencyPreference(currencyPreference, locale)
       const [anchor, setAnchor] = React.useState(() => startOfDay(new Date()))
       const [stage, setStage] = React.useState('processing')
+      const [printRunId, setPrintRunId] = React.useState(0)
       const [data, setData] = React.useState(null)
       const [error, setError] = React.useState(null)
       const [saveState, setSaveState] = React.useState('idle')
       const [saveMessage, setSaveMessage] = React.useState('')
+      const [copyState, setCopyState] = React.useState('idle')
+      const [copyMessage, setCopyMessage] = React.useState('')
       const mountedRef = React.useRef(true)
       const abortRef = React.useRef(null)
       const timerRef = React.useRef(null)
       const saveTimerRef = React.useRef(null)
-      const firstRunRef = React.useRef(true)
+      const copyTimerRef = React.useRef(null)
       const paperRef = React.useRef(null)
       const savingRef = React.useRef(false)
       const range = React.useMemo(() => periodRange(period, anchor), [period, anchor])
       const currentStart = currentPeriodStart(period)
       const nextDisabled = range.start.getTime() >= currentStart.getTime()
-      const rel = relativeLabel(period, range.start, copy)
+      const displayStart = resolveDisplayStart(period, range.start, data)
+      const rel = relativeLabel(period, displayStart, copy)
+
+      const clearExportTimers = () => {
+        if (saveTimerRef.current) {
+          clearTimeout(saveTimerRef.current)
+          saveTimerRef.current = null
+        }
+        if (copyTimerRef.current) {
+          clearTimeout(copyTimerRef.current)
+          copyTimerRef.current = null
+        }
+      }
 
       React.useEffect(() => {
         mountedRef.current = true
         return () => {
           mountedRef.current = false
-          if (saveTimerRef.current) {
-            clearTimeout(saveTimerRef.current)
-            saveTimerRef.current = null
-          }
+          clearExportTimers()
         }
       }, [])
 
@@ -1280,10 +1426,7 @@ body[data-ds-dark-theme] .tr-slot { border-color: var(--tr-g1); background: var(
           clearTimeout(timerRef.current)
           timerRef.current = null
         }
-        if (saveTimerRef.current) {
-          clearTimeout(saveTimerRef.current)
-          saveTimerRef.current = null
-        }
+        clearExportTimers()
         const controller = new AbortController()
         abortRef.current = controller
         const isStale = () => !mountedRef.current || controller.signal.aborted || abortRef.current !== controller
@@ -1295,9 +1438,11 @@ body[data-ds-dark-theme] .tr-slot { border-color: var(--tr-g1); background: var(
         setData(null)
         setSaveState('idle')
         setSaveMessage('')
+        setCopyState('idle')
+        setCopyMessage('')
         const from = range.start.getTime()
         const to = range.end.getTime()
-        const key = periodKey(period, range.start)
+        const key = periodKey(period, range.start, range.end)
         const url =
           `/api/token-receipt?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&date=${encodeURIComponent(key)}&period=${encodeURIComponent(period)}` +
           (refresh ? '&refresh=1' : '')
@@ -1318,6 +1463,7 @@ body[data-ds-dark-theme] .tr-slot { border-color: var(--tr-g1); background: var(
           if (!shouldAnimate) {
             setStage('complete')
           } else {
+            setPrintRunId((n) => n + 1)
             setStage('printing')
             timerRef.current = setTimeout(() => {
               timerRef.current = null
@@ -1326,15 +1472,13 @@ body[data-ds-dark-theme] .tr-slot { border-color: var(--tr-g1); background: var(
           }
         } catch (fetchError) {
           if (isStale()) return
-          setError(fetchError instanceof Error ? fetchError.message : String(fetchError))
+          setError(errorMessage(fetchError))
           setStage('error')
         }
       }, [period, range])
 
       React.useEffect(() => {
-        const animate = firstRunRef.current
-        firstRunRef.current = false
-        runPrint(animate)
+        runPrint(true)
         return () => {
           if (abortRef.current) abortRef.current.abort()
           if (timerRef.current) {
@@ -1345,12 +1489,27 @@ body[data-ds-dark-theme] .tr-slot { border-color: var(--tr-g1); background: var(
       }, [runPrint])
 
       const busy = stage === 'processing' || stage === 'printing'
-      const locked = saveState === 'saving'
+      const locked = saveState === 'saving' || copyState === 'copying'
       const actionLocked = busy || locked
       const reduced = prefersReducedMotion()
       const primaryLabel = busy ? copy.printingButton : stage === 'complete' ? copy.again : copy.print
+      const copyLabel = copyState === 'copying' ? copy.copyingImage : copyState === 'copied' ? copy.copiedImage : copyState === 'error' ? copy.copyFailed : copy.copyImage
       const saveLabel = saveState === 'saving' ? copy.savingPng : saveState === 'saved' ? copy.savedPng : saveState === 'error' ? copy.saveFailed : copy.savePng
-      const dateText = periodLabel(period, range.start, range.end, locale)
+      const actionStatusText =
+        copyState === 'copying'
+          ? copy.copyingImage
+          : copyState === 'copied'
+            ? copy.copiedImage
+            : copyState === 'error'
+              ? `${copy.copyFailed}: ${copyMessage}`
+              : saveState === 'saving'
+                ? copy.savingPng
+                : saveState === 'saved'
+                  ? copy.savedPng
+                  : saveState === 'error'
+                    ? `${copy.saveFailed}: ${saveMessage}`
+                    : ''
+      const dateText = periodLabel(period, displayStart, range.end, locale)
       const screenSub = period === 'day' ? `${rel ? `${rel} · ` : ''}${shortDate(range.start, locale)}` : dateText
       const inputType = period === 'month' ? 'month' : 'date'
       const inputValue = period === 'month' ? monthKey(anchor) : dateKey(anchor)
@@ -1380,36 +1539,74 @@ body[data-ds-dark-theme] .tr-slot { border-color: var(--tr-g1); background: var(
         const parsed = period === 'month' ? parseMonthKey(value) : parseDateKey(value)
         if (parsed) updateAnchor(period === 'month' ? startOfMonth(parsed) : startOfDay(parsed))
       }
-      const handleSave = async () => {
+      const runPaperAction = async ({
+        action,
+        logLabel,
+        pendingState,
+        doneState,
+        setState,
+        setMessage,
+        clearOtherState,
+        clearOtherMessage,
+        actionTimerRef,
+      }) => {
         if (!data || !paperRef.current || savingRef.current || busy) return
         savingRef.current = true
-        if (saveTimerRef.current) {
-          clearTimeout(saveTimerRef.current)
-          saveTimerRef.current = null
-        }
-        setSaveState('saving')
-        setSaveMessage('')
+        clearExportTimers()
+        clearOtherState('idle')
+        clearOtherMessage('')
+        setState(pendingState)
+        setMessage('')
         try {
-          await exportReceiptPng(
-            paperRef.current,
-            billNumber(period, data.date, data.totals.totalTokens, data.totals.requests),
-            copy,
-          )
+          await action(paperRef.current)
           if (!mountedRef.current) return
-          setSaveState('saved')
-          saveTimerRef.current = setTimeout(() => {
-            saveTimerRef.current = null
-            if (mountedRef.current) setSaveState('idle')
+          setState(doneState)
+          actionTimerRef.current = setTimeout(() => {
+            actionTimerRef.current = null
+            if (mountedRef.current) setState('idle')
           }, 3200)
-        } catch (saveError) {
+        } catch (actionError) {
           if (!mountedRef.current) return
-          console.error('[token-receipt] PNG export failed', saveError)
-          setSaveState('error')
-          setSaveMessage(saveError instanceof Error ? saveError.message : String(saveError))
+          console.error(logLabel, actionError)
+          setState('error')
+          setMessage(errorMessage(actionError))
         } finally {
           savingRef.current = false
         }
       }
+      const handleCopy = () =>
+        runPaperAction({
+          action: (paperEl) => copyReceiptPng(paperEl, copy),
+          logLabel: '[token-receipt] PNG copy failed',
+          pendingState: 'copying',
+          doneState: 'copied',
+          setState: setCopyState,
+          setMessage: setCopyMessage,
+          clearOtherState: setSaveState,
+          clearOtherMessage: setSaveMessage,
+          actionTimerRef: copyTimerRef,
+        })
+      const handleSave = () =>
+        runPaperAction({
+          action: (paperEl) =>
+            exportReceiptPng(
+              paperEl,
+              billNumber(period, data.date, data.totals.totalTokens, data.totals.requests),
+              copy,
+            ),
+          logLabel: '[token-receipt] PNG export failed',
+          pendingState: 'saving',
+          doneState: 'saved',
+          setState: setSaveState,
+          setMessage: setSaveMessage,
+          clearOtherState: setCopyState,
+          clearOtherMessage: setCopyMessage,
+          actionTimerRef: saveTimerRef,
+        })
+
+      const exportErrorTitle = copyState === 'error' ? copy.copyFailed : saveState === 'error' ? copy.saveFailed : ''
+      const exportErrorMessage = copyState === 'error' ? copyMessage : saveState === 'error' ? saveMessage : ''
+      const exportRetryHandler = copyState === 'error' ? handleCopy : handleSave
 
       return h(
         'div',
@@ -1425,12 +1622,12 @@ body[data-ds-dark-theme] .tr-slot { border-color: var(--tr-g1); background: var(
             h(
               'div',
               { className: 'tr-actions' },
-              h('span', { className: 'tr-sr-only', role: 'status', 'aria-live': 'polite' }, saveState === 'saving' ? copy.savingPng : saveState === 'saved' ? copy.savedPng : saveState === 'error' ? `${copy.saveFailed}: ${saveMessage}` : ''),
+              h('span', { className: 'tr-sr-only', role: 'status', 'aria-live': 'polite' }, actionStatusText),
               h(
                 'button',
-                { className: 'tr-btn', type: 'button', disabled: !data || actionLocked, onClick: () => window.print() },
-                h(PrinterGlyph, { size: 14 }),
-                copy.printPaper,
+                { className: 'tr-btn', type: 'button', disabled: !data || actionLocked, onClick: handleCopy },
+                copyState === 'copied' ? h(CheckCircle) : h(CopyIcon),
+                copyLabel,
               ),
               h(
                 'button',
@@ -1455,7 +1652,7 @@ body[data-ds-dark-theme] .tr-slot { border-color: var(--tr-g1); background: var(
               h(
                 'div',
                 { className: 'tr-periods', role: 'group', 'aria-label': copy.period },
-                ['day', 'week', 'month'].map((value) =>
+                PERIODS.map((value) =>
                   h('button', { key: value, className: `tr-periodbtn${period === value ? ' is-active' : ''}`, type: 'button', 'aria-pressed': period === value, disabled: locked, onClick: () => handlePeriod(value) }, copy[value]),
                 ),
               ),
@@ -1467,32 +1664,47 @@ body[data-ds-dark-theme] .tr-slot { border-color: var(--tr-g1); background: var(
             h(
               'div',
               { className: 'tr-daternav' },
-              h(
-                'div',
-                { className: 'tr-datenav' },
-                h('button', { className: 'tr-navbtn', type: 'button', 'aria-label': copy.prevPeriod, disabled: locked, onClick: () => { if (!savingRef.current) updateAnchor((value) => shiftAnchor(period, value, -1)) } }, h(Chevron, { dir: 'left' })),
-                h(
-                  'label',
-                  { className: 'tr-datebox', title: copy.pickDate },
-                  h('span', { className: 'tr-datemain' }, dateText),
-                  rel ? h('span', { className: 'tr-daterel' }, rel) : null,
-                  h('span', { className: 'tr-dateicon', 'aria-hidden': true }, h(CalendarIcon)),
-                  h('input', { className: 'tr-datepicker', disabled: locked, type: inputType, value: inputValue, max: inputMax, 'aria-label': copy.pickDate, onClick: handleDateInputClick, onChange: handlePickDate }),
-                ),
-                h('button', { className: 'tr-navbtn', type: 'button', 'aria-label': copy.nextPeriod, disabled: locked || nextDisabled, onClick: () => { if (!savingRef.current) updateAnchor((value) => shiftAnchor(period, value, 1)) } }, h(Chevron, { dir: 'right' })),
-              ),
-              rel !== copy.today && rel !== copy.thisWeek && rel !== copy.thisMonth
-                ? h('button', { className: 'tr-btn tr-todaybtn', type: 'button', disabled: locked, onClick: handleToday }, copy.backToday)
-                : null,
+              isSteppablePeriod(period)
+                ? h(
+                    React.Fragment,
+                    null,
+                    h(
+                      'div',
+                      { className: 'tr-datenav' },
+                      h('button', { className: 'tr-navbtn', type: 'button', 'aria-label': copy.prevPeriod, disabled: locked, onClick: () => { if (!savingRef.current) updateAnchor((value) => shiftAnchor(period, value, -1)) } }, h(Chevron, { dir: 'left' })),
+                      h(
+                        'label',
+                        { className: 'tr-datebox', title: copy.pickDate },
+                        h('span', { className: 'tr-datemain' }, dateText),
+                        rel ? h('span', { className: 'tr-daterel' }, rel) : null,
+                        h('span', { className: 'tr-dateicon', 'aria-hidden': true }, h(CalendarIcon)),
+                        h('input', { className: 'tr-datepicker', disabled: locked, type: inputType, value: inputValue, max: inputMax, 'aria-label': copy.pickDate, onClick: handleDateInputClick, onChange: handlePickDate }),
+                      ),
+                      h('button', { className: 'tr-navbtn', type: 'button', 'aria-label': copy.nextPeriod, disabled: locked || nextDisabled, onClick: () => { if (!savingRef.current) updateAnchor((value) => shiftAnchor(period, value, 1)) } }, h(Chevron, { dir: 'right' })),
+                    ),
+                    rel !== copy.today && rel !== copy.thisWeek && rel !== copy.thisMonth
+                      ? h('button', { className: 'tr-btn tr-todaybtn', type: 'button', disabled: locked, onClick: handleToday }, copy.backToday)
+                      : null,
+                  )
+                : h(
+                    'div',
+                    { className: 'tr-datenav' },
+                    h(
+                      'div',
+                      { className: 'tr-datebox is-static' },
+                      h('span', { className: 'tr-datemain' }, dateText),
+                      rel ? h('span', { className: 'tr-daterel' }, rel) : null,
+                    ),
+                  ),
             ),
           ),
-          saveState === 'error'
+          copyState === 'error' || saveState === 'error'
             ? h(
                 'div',
                 { className: 'tr-save-error', role: 'alert' },
-                h('strong', null, copy.saveFailed),
-                h('span', null, saveMessage),
-                h('button', { className: 'tr-btn', type: 'button', disabled: !data || actionLocked, onClick: handleSave }, copy.retry),
+                h('strong', null, exportErrorTitle),
+                h('span', null, exportErrorMessage),
+                h('button', { className: 'tr-btn', type: 'button', disabled: !data || actionLocked, onClick: exportRetryHandler }, copy.retry),
               )
             : null,
           h(
@@ -1541,7 +1753,7 @@ body[data-ds-dark-theme] .tr-slot { border-color: var(--tr-g1); background: var(
                     { className: 'tr-output' },
                     h(
                       'div',
-                      { className: `tr-paper-wrap${reduced ? ' is-reduced' : ''}`, 'data-stage': stage === 'processing' ? 'processing' : stage, 'aria-hidden': stage !== 'complete' },
+                      { key: printRunId, className: `tr-paper-wrap${reduced ? ' is-reduced' : ''}`, 'data-stage': stage === 'processing' ? 'processing' : stage, 'aria-hidden': stage !== 'complete' },
                       data ? h(Receipt, { copy, locale, data, period, paperRef, currency }) : null,
                     ),
                   ),

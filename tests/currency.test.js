@@ -199,6 +199,8 @@ const windowObj = {
     return { matches: false }
   },
   print() {},
+  navigator: undefined,
+  ClipboardItem: undefined,
 }
 
 const documentObj = {
@@ -273,7 +275,13 @@ vm.runInNewContext(
       fullDate,
       shortDate,
       monthYear,
+      PERIODS,
+      isSteppablePeriod,
+      periodRange,
+      periodKey,
       periodLabel,
+      relativeLabel,
+      billNumber,
       fmtExact,
       defaultCurrencyForLocale,
       resolveCurrencyPreference,
@@ -284,7 +292,11 @@ vm.runInNewContext(
       FONT_CSS,
       CSS,
       collectWrappedLines,
+      renderReceiptPngBlob,
       exportReceiptPng,
+      copyReceiptPng,
+      CheckCircle,
+      CopyIcon,
       Receipt,
       Panel,
     }`,
@@ -333,7 +345,13 @@ const {
   fullDate,
   shortDate,
   monthYear,
+  PERIODS,
+  isSteppablePeriod,
+  periodRange,
+  periodKey,
   periodLabel,
+  relativeLabel,
+  billNumber,
   fmtExact,
   defaultCurrencyForLocale,
   resolveCurrencyPreference,
@@ -344,7 +362,11 @@ const {
   FONT_CSS,
   CSS,
   collectWrappedLines,
+  renderReceiptPngBlob,
   exportReceiptPng,
+  copyReceiptPng,
+  CheckCircle,
+  CopyIcon,
   Receipt,
   Panel,
 } = client
@@ -506,10 +528,14 @@ test('PNG export aborts before rendering if language, currency, or connection ch
 
 test('all three language dictionaries include matching keys and sorted placeholders with dead keys removed', () => {
   const keys = Object.keys(DICT.en).sort()
-  const removedKeys = ['daily', 'weekly', 'monthly', 'total', 'models', 'emptyHint', 'referencePrice', 'fallbackPrice', 'priceAsOf']
+  const removedKeys = ['daily', 'weekly', 'monthly', 'printPaper', 'total', 'models', 'emptyHint', 'referencePrice', 'fallbackPrice', 'priceAsOf']
   for (const dead of removedKeys) {
     assert.equal(Object.hasOwn(DICT.en, dead), false, `dead key ${dead} should be removed`)
   }
+  for (const required of ['copyImage', 'copyingImage', 'copiedImage', 'copyFailed', 'clipboardUnsupported', 'days30', 'days90', 'all', 'allTime']) {
+    assert.equal(Object.hasOwn(DICT.en, required), true, `missing required key ${required}`)
+  }
+  assert.match(DICT.en.exportChanged, /language or currency changed/)
   assert.equal(DICT.en.completeStatus, 'Receipt complete')
   for (const language of ['zh', 'ja']) {
     assert.deepEqual(Object.keys(DICT[language]).sort(), keys)
@@ -565,6 +591,9 @@ test('apply injects scoped font-face CSS once, removes it on dispose, and normal
   assert.equal(CSS.includes('@font-face'), false)
   assert.ok(CSS.includes('body:has(.tr-page) *'))
   assert.ok(CSS.includes('print-color-adjust: exact'))
+  assert.ok(CSS.includes('.tr-periods { display: inline-flex; flex-wrap: wrap;'))
+  assert.ok(CSS.includes('.tr-datebox.is-static {'))
+  assert.ok(CSS.includes('.tr-datebox:not(.is-static):hover'))
   assert.equal(CSS.includes('--dsw-alias-'), false)
 
   const ctx = createMockCtx('zh-CN')
@@ -783,13 +812,19 @@ test('Panel keeps period, date, and currency unlocked during print animation, up
   // Now in stage === 'printing' (1900ms feed timer pending).
   const paperWrap = findAll(view.tree, (n) => String(n.props?.className || '').startsWith('tr-paper-wrap'))[0]
   assert.equal(paperWrap.props['data-stage'], 'printing')
+  const firstRunKey = paperWrap.props.key
 
-  // Replay Print, Save PNG, and Print / PDF stay disabled while printing, whereas period/date/currency controls are UNLOCKED!
+  // Replay Print, Save PNG, and Copy image stay disabled while printing, and Print / PDF is gone; period/date/currency controls are UNLOCKED!
+  const allButtonsWhilePrinting = findAll(view.tree, (n) => n.type === 'button')
+  assert.equal(allButtonsWhilePrinting.some((b) => textOf(b) === 'Print / PDF' || textOf(b) === '打印 / PDF'), false)
+  const copyBtn = allButtonsWhilePrinting.find((b) => textOf(b) === DICT.en.copyImage)
+  assert.ok(copyBtn, 'Copy image button should replace Print / PDF')
+  assert.equal(copyBtn.props.disabled, true)
   const replayBtn = findAll(view.tree, (n) => String(n.props?.className || '').includes('tr-btn-primary'))[0]
   assert.equal(replayBtn.props.disabled, true)
 
   const periodBtns = findAll(view.tree, (n) => String(n.props?.className || '').startsWith('tr-periodbtn'))
-  assert.equal(periodBtns.length, 3)
+  assert.equal(periodBtns.length, 6)
   for (const btn of periodBtns) assert.equal(btn.props.disabled, false, 'period buttons must stay unlocked while printing')
 
   const currencySelect = findAll(view.tree, (n) => n.type === 'select')[0]
@@ -836,7 +871,7 @@ test('Panel keeps period, date, and currency unlocked during print animation, up
   machineTodayBtn.props.onClick()
   assert.equal(fetchedUrls.length, 1, 'clicking Today while already on Today must not refetch')
 
-  // Switching period while printing aborts the first run, clears the 1900ms timer, and fetches week immediately.
+  // Switching period while printing aborts the first run, clears the 1900ms timer, fetches week, and replays the print animation!
   nextBill = sampleBill({
     period: 'week',
     pricing: {
@@ -856,8 +891,26 @@ test('Panel keeps period, date, and currency unlocked during print animation, up
   assert.equal(fetchedUrls.length, 2)
   assert.ok(fetchedUrls[1].includes('period=week'))
   assert.equal(fetchedUrls[1].includes('refresh=1'), false)
+  assert.equal(
+    findAll(view.tree, (n) => String(n.props?.className || '').startsWith('tr-paper-wrap'))[0].props['data-stage'],
+    'processing',
+  )
 
-  // Week switch ran with animate=false so it is now complete; priceRetry button is visible and sends refresh=1.
+  // Period switch schedules MIN_PROCESSING_MS (<= 850ms) -> printing (1900ms) -> complete.
+  runTimerMatching((ms) => ms > 0 && ms <= 850, 'week MIN_PROCESSING_MS')
+  await flushMicrotasks()
+  const weekPrintingWrap = findAll(view.tree, (n) => String(n.props?.className || '').startsWith('tr-paper-wrap'))[0]
+  assert.equal(weekPrintingWrap.props['data-stage'], 'printing')
+  assert.notEqual(weekPrintingWrap.props.key, firstRunKey, 'printRunId key must increment to replay feed animation')
+
+  runTimerMatching((ms) => ms === 1900, 'week printing feed')
+  await flushMicrotasks()
+  assert.equal(
+    findAll(view.tree, (n) => String(n.props?.className || '').startsWith('tr-paper-wrap'))[0].props['data-stage'],
+    'complete',
+  )
+
+  // Week print completed; priceRetry button is visible and sends refresh=1 without re-animating.
   const priceRetryBtn = findAll(view.tree, (n) => n.type === 'button' && textOf(n) === DICT.en.priceRetry)[0]
   assert.ok(priceRetryBtn, 'priceRetry button should render when pricing is unavailable')
   assert.equal(priceRetryBtn.props.disabled, false)
@@ -867,6 +920,7 @@ test('Panel keeps period, date, and currency unlocked during print animation, up
   await flushMicrotasks()
   assert.equal(fetchedUrls.length, 3)
   assert.ok(fetchedUrls[2].includes('&refresh=1'), 'priceRetry must append &refresh=1')
+  assert.equal(timers.size, 0, 'priceRetry must not schedule print animation timers')
 
   // Dynamic prefers-reduced-motion skips MIN_PROCESSING_MS and 1900ms printing stage on Replay Print.
   reducedMotion = true
@@ -887,7 +941,7 @@ test('Panel keeps period, date, and currency unlocked during print animation, up
   assert.equal(timers.size, 0)
 })
 
-test('Panel clears MIN_PROCESSING_MS timer on abort, locks filters only during PNG save, and clears saveTimerRef on unmount', async () => {
+test('Panel clears MIN_PROCESSING_MS timer on abort, replays animation on prevBtn, locks filters only during PNG save, and clears saveTimerRef on unmount', async () => {
   timers.clear()
   reducedMotion = false
   env.fetchImpl = async () => ({
@@ -903,14 +957,28 @@ test('Panel clears MIN_PROCESSING_MS timer on abort, locks filters only during P
   // Currently waiting on the <= 850ms MIN_PROCESSING_MS abort-aware timer.
   assert.equal([...timers.values()].some((t) => t.ms > 0 && t.ms <= 850), true)
 
-  // Navigate to previous day while still in MIN_PROCESSING_MS — must clear the timer immediately.
+  // Navigate to previous day while still in MIN_PROCESSING_MS — must clear the old timer immediately.
   const prevBtn = findAll(view.tree, (n) => n.props?.['aria-label'] === DICT.zh.prevPeriod)[0]
   assert.equal(prevBtn.props.disabled, false)
   prevBtn.props.onClick()
   assert.equal([...timers.values()].some((t) => t.ms > 0 && t.ms <= 850), false, 'aborting during MIN_PROCESSING_MS must clear its timer')
   await flushMicrotasks()
 
-  // Complete stage reached (animate=false on date navigation). Attach mock DOM paper node and trigger Save PNG.
+  // Navigating dates now replays the print animation: MIN_PROCESSING_MS (<= 850ms) -> printing (1900ms) -> complete.
+  runTimerMatching((ms) => ms > 0 && ms <= 850, 'prevBtn MIN_PROCESSING_MS')
+  await flushMicrotasks()
+  assert.equal(
+    findAll(view.tree, (n) => String(n.props?.className || '').startsWith('tr-paper-wrap'))[0].props['data-stage'],
+    'printing',
+  )
+  runTimerMatching((ms) => ms === 1900, 'prevBtn printing feed')
+  await flushMicrotasks()
+  assert.equal(
+    findAll(view.tree, (n) => String(n.props?.className || '').startsWith('tr-paper-wrap'))[0].props['data-stage'],
+    'complete',
+  )
+
+  // Attach mock DOM paper node and trigger Save PNG.
   const articleNode = findAll(view.tree, (n) => n.type === 'article')[0]
   let pendingBlobCb = null
   env.createElementImpl = (tag) => {
@@ -957,6 +1025,7 @@ test('Panel clears MIN_PROCESSING_MS timer on abort, locks filters only during P
   }
   assert.equal(findAll(view.tree, (n) => n.type === 'select')[0].props.disabled, true, 'currency select must lock during PNG export')
   assert.equal(findAll(view.tree, (n) => n.props?.className === 'tr-datepicker')[0].props.disabled, true, 'date input must lock during PNG export')
+  assert.equal(findAll(view.tree, (n) => n.type === 'button' && textOf(n) === DICT.zh.copyImage)[0].props.disabled, true, 'copy button must lock during PNG export')
 
   // Finish PNG export -> schedules 3200ms saveTimerRef (plus 4000ms URL.revokeObjectURL).
   pendingBlobCb({ size: 64 })
@@ -968,5 +1037,624 @@ test('Panel clears MIN_PROCESSING_MS timer on abort, locks filters only during P
   assert.equal([...timers.values()].some((t) => t.ms === 3200), false, 'unmounting Panel must clear saveTimerRef')
   timers.clear()
   env.createElementImpl = null
+})
+
+function setupCanvasStub(onToBlob) {
+  const mockCtx2d = {
+    globalAlpha: 1,
+    fillStyle: '#000',
+    strokeStyle: '#000',
+    lineWidth: 1,
+    font: '',
+    textAlign: 'left',
+    textBaseline: 'middle',
+    scale() {},
+    translate() {},
+    save() {},
+    restore() { this.globalAlpha = 1 },
+    beginPath() {},
+    moveTo() {},
+    lineTo() {},
+    closePath() {},
+    clip() {},
+    setLineDash() {},
+    stroke() {},
+    fillRect() {},
+    fill() {},
+    fillText() {},
+    measureText: (t) => ({ width: t.length * 5 }),
+  }
+  env.createElementImpl = (tag) => {
+    if (tag === 'canvas') {
+      return {
+        width: 0,
+        height: 0,
+        getContext: () => mockCtx2d,
+        toBlob(cb) { onToBlob(cb) },
+      }
+    }
+    return { style: {}, click() {}, remove() {} }
+  }
+}
+
+function makePaperStub(lang = 'en', currency = 'usd') {
+  return {
+    lang,
+    dataset: { currency },
+    isConnected: true,
+    _textNodes: [],
+    getBoundingClientRect: () => ({ left: 0, top: 0, width: 300, height: 400 }),
+    querySelector: () => null,
+    querySelectorAll: () => [],
+  }
+}
+
+test('copyReceiptPng supports Safari Promise-in-ClipboardItem, Chromium TypeError fallback, unsupported environments, and change/disconnect guards', async () => {
+  try {
+    // 0. renderReceiptPngBlob returns the rendered PNG blob directly without triggering a download.
+    let anchorCreated = false
+    setupCanvasStub((cb) => cb({ size: 128, type: 'image/png' }))
+    const origCreateElementImpl = env.createElementImpl
+    env.createElementImpl = (tag) => {
+      if (tag === 'a') anchorCreated = true
+      return origCreateElementImpl(tag)
+    }
+    const directBlob = await renderReceiptPngBlob(makePaperStub('en', 'usd'), DICT.en)
+    assert.deepEqual(directBlob, { size: 128, type: 'image/png' })
+    assert.equal(anchorCreated, false)
+
+    // 1. Null paper guard.
+    await assert.rejects(copyReceiptPng(null, DICT.en), new RegExp(DICT.en.exportNotReady))
+
+    // 2. Missing clipboard API or ClipboardItem throws localized clipboardUnsupported.
+    windowObj.navigator = undefined
+    windowObj.ClipboardItem = undefined
+    await assert.rejects(copyReceiptPng(makePaperStub(), DICT.zh), new RegExp(DICT.zh.clipboardUnsupported))
+
+    windowObj.navigator = { clipboard: {} }
+    windowObj.ClipboardItem = function MockItem() {}
+    await assert.rejects(copyReceiptPng(makePaperStub(), DICT.ja), new RegExp(DICT.ja.clipboardUnsupported))
+
+    windowObj.navigator = { clipboard: { async write() {} } }
+    windowObj.ClipboardItem = undefined
+    await assert.rejects(copyReceiptPng(makePaperStub(), DICT.en), new RegExp(DICT.en.clipboardUnsupported))
+
+    // 3. Safari / modern path: ClipboardItem({ 'image/png': Promise<Blob> }) + clipboard.write invoked synchronously during click gesture.
+    let resolveFonts
+    fonts.ready = new Promise((resolve) => { resolveFonts = resolve })
+    const createdItems = []
+    const writeCalls = []
+    let resolveWrite
+    let pendingBlobCb = null
+    setupCanvasStub((cb) => { pendingBlobCb = cb })
+    windowObj.ClipboardItem = class SafariClipboardItem {
+      constructor(items) {
+        this.items = items
+        createdItems.push(items)
+      }
+    }
+    windowObj.navigator = {
+      clipboard: {
+        write(items) {
+          writeCalls.push(items)
+          return new Promise((resolve) => { resolveWrite = resolve })
+        },
+      },
+    }
+
+    const safariPaper = makePaperStub('en', 'usd')
+    const safariCopy = copyReceiptPng(safariPaper, DICT.en)
+    // Invoked synchronously before any microtask tick!
+    assert.equal(createdItems.length, 1)
+    assert.equal(typeof createdItems[0]['image/png']?.then, 'function', 'Safari path must pass Promise<Blob> to ClipboardItem')
+    assert.equal(writeCalls.length, 1, 'clipboard.write must be invoked synchronously inside user gesture')
+
+    resolveFonts()
+    await flushMicrotasks()
+    const renderedBlob = { size: 256, type: 'image/png' }
+    pendingBlobCb(renderedBlob)
+    assert.equal(await createdItems[0]['image/png'], renderedBlob)
+    resolveWrite()
+    await safariCopy
+
+    // 4. Legacy Chromium fallback A: new ClipboardItem({ 'image/png': Promise }) throws TypeError -> falls back to resolved Blob.
+    fonts.ready = Promise.resolve()
+    const chromiumItemsA = []
+    const chromiumWritesA = []
+    setupCanvasStub((cb) => cb({ size: 300, type: 'image/png' }))
+    windowObj.ClipboardItem = class LegacyClipboardItem {
+      constructor(items) {
+        if (items['image/png'] && typeof items['image/png'].then === 'function') {
+          throw new TypeError('Failed to construct ClipboardItem: value is not a Blob')
+        }
+        this.items = items
+        chromiumItemsA.push(items)
+      }
+    }
+    windowObj.navigator = {
+      clipboard: {
+        async write(items) {
+          chromiumWritesA.push(items)
+        },
+      },
+    }
+    await copyReceiptPng(makePaperStub('en', 'usd'), DICT.en)
+    assert.equal(chromiumItemsA.length, 1)
+    assert.equal(chromiumItemsA[0]['image/png'].size, 300)
+    assert.equal(chromiumWritesA.length, 1)
+
+    // 5. Legacy Chromium fallback B: ClipboardItem accepts Promise, but clipboard.write rejects with TypeError -> retries with resolved Blob.
+    const chromiumItemsB = []
+    const chromiumWritesB = []
+    setupCanvasStub((cb) => cb({ size: 400, type: 'image/png' }))
+    windowObj.ClipboardItem = class RetryClipboardItem {
+      constructor(items) {
+        this.items = items
+        chromiumItemsB.push(items)
+      }
+    }
+    windowObj.navigator = {
+      clipboard: {
+        async write(items) {
+          chromiumWritesB.push(items)
+          if (typeof items[0].items['image/png']?.then === 'function') {
+            throw new TypeError('ClipboardItem promise unsupported')
+          }
+        },
+      },
+    }
+    await copyReceiptPng(makePaperStub('en', 'usd'), DICT.en)
+    assert.equal(chromiumItemsB.length, 2)
+    assert.equal(typeof chromiumItemsB[0]['image/png'].then, 'function')
+    assert.equal(chromiumItemsB[1]['image/png'].size, 400)
+    assert.equal(chromiumWritesB.length, 2)
+
+    // 6. Non-TypeError clipboard failure (e.g. NotAllowedError) rejects without retrying.
+    let nonTypeWriteCount = 0
+    setupCanvasStub((cb) => cb({ size: 512, type: 'image/png' }))
+    windowObj.ClipboardItem = class BasicClipboardItem {
+      constructor(items) { this.items = items }
+    }
+    windowObj.navigator = {
+      clipboard: {
+        async write() {
+          nonTypeWriteCount += 1
+          throw new Error('NotAllowedError')
+        },
+      },
+    }
+    await assert.rejects(copyReceiptPng(makePaperStub('en', 'usd'), DICT.en), /NotAllowedError/)
+    assert.equal(nonTypeWriteCount, 1)
+
+    // 7. Disconnect or currency change during copy rejects and does NOT write a stale image.
+    for (const change of ['currency', 'disconnect']) {
+      // Legacy path (throws TypeError on Promise): clipboard.write must never be called.
+      let legacyWriteCount = 0
+      let ready
+      fonts.ready = new Promise((resolve) => { ready = resolve })
+      windowObj.ClipboardItem = class GuardLegacyClipboardItem {
+        constructor(items) {
+          if (typeof items['image/png']?.then === 'function') throw new TypeError('Blob required')
+          this.items = items
+        }
+      }
+      windowObj.navigator = {
+        clipboard: {
+          async write() { legacyWriteCount += 1 },
+        },
+      }
+      const guardedPaper = makePaperStub('en', 'usd')
+      const legacyCopy = copyReceiptPng(guardedPaper, DICT.en)
+      if (change === 'currency') guardedPaper.dataset.currency = 'jpy'
+      else guardedPaper.isConnected = false
+      ready()
+      await assert.rejects(legacyCopy, change === 'disconnect' ? /Receipt was closed/ : /language or currency changed/)
+      assert.equal(legacyWriteCount, 0)
+
+      // Safari path (ClipboardItem awaits Promise): clipboard.write rejects with the guard error and receives no Blob.
+      let readySafari
+      fonts.ready = new Promise((resolve) => { readySafari = resolve })
+      windowObj.ClipboardItem = class GuardSafariClipboardItem {
+        constructor(items) { this.items = items }
+      }
+      windowObj.navigator = {
+        clipboard: {
+          async write(items) { await items[0].items['image/png'] },
+        },
+      }
+      const safariGuardPaper = makePaperStub('en', 'usd')
+      const safariGuardCopy = copyReceiptPng(safariGuardPaper, DICT.en)
+      if (change === 'currency') safariGuardPaper.dataset.currency = 'cny'
+      else safariGuardPaper.isConnected = false
+      readySafari()
+      await assert.rejects(safariGuardCopy, change === 'disconnect' ? /Receipt was closed/ : /language or currency changed/)
+    }
+  } finally {
+    fonts.ready = Promise.resolve()
+    env.createElementImpl = null
+    windowObj.navigator = undefined
+    windowObj.ClipboardItem = undefined
+  }
+})
+
+test('Panel Copy image button writes PNG to clipboard, locks controls, handles error retry and mutual exclusion, and cleans up 3200ms timer', async () => {
+  timers.clear()
+  reducedMotion = false
+  try {
+    env.fetchImpl = async () => ({
+      ok: true,
+      status: 200,
+      json: async () => sampleBill(),
+    })
+
+    const ctx = createMockCtx('en')
+    const view = mount(Panel, { ctx })
+    await flushMicrotasks()
+    runTimerMatching((ms) => ms > 0 && ms <= 850, 'copy test MIN_PROCESSING_MS')
+    await flushMicrotasks()
+    runTimerMatching((ms) => ms === 1900, 'copy test feed')
+    await flushMicrotasks()
+
+    assert.equal(
+      findAll(view.tree, (n) => n.type === 'button' && (textOf(n) === 'Print / PDF' || textOf(n) === '打印 / PDF')).length,
+      0,
+    )
+
+    let pendingBlobCb = null
+    setupCanvasStub((cb) => { pendingBlobCb = cb })
+    const clipboardWrites = []
+    windowObj.ClipboardItem = class PanelClipboardItem {
+      constructor(items) { this.items = items }
+    }
+    windowObj.navigator = {
+      clipboard: {
+        async write(items) {
+          clipboardWrites.push(items)
+          await items[0].items['image/png']
+        },
+      },
+    }
+
+    const articleNode = findAll(view.tree, (n) => n.type === 'article')[0]
+    articleNode.props.ref.current = makePaperStub('en', 'usd')
+
+    const copyBtn = findAll(view.tree, (n) => n.type === 'button' && textOf(n) === DICT.en.copyImage)[0]
+    assert.ok(copyBtn)
+    assert.equal(copyBtn.props.disabled, false)
+    assert.equal(copyBtn.children[0].type, 'svg')
+    assert.equal(copyBtn.children[0].children[0].type, 'rect')
+
+    const copyPromise = copyBtn.props.onClick()
+    await flushMicrotasks()
+    assert.equal(clipboardWrites.length, 1)
+
+    // While copying: label shows Copying..., sr-only status updated, and all controls are locked.
+    const copyingBtn = findAll(view.tree, (n) => n.type === 'button' && textOf(n) === DICT.en.copyingImage)[0]
+    assert.ok(copyingBtn)
+    assert.equal(copyingBtn.props.disabled, true)
+    assert.equal(textOf(findAll(view.tree, (n) => n.props?.className === 'tr-sr-only')[0]), DICT.en.copyingImage)
+    for (const btn of findAll(view.tree, (n) => String(n.props?.className || '').startsWith('tr-periodbtn'))) {
+      assert.equal(btn.props.disabled, true, 'period buttons must lock while copying')
+    }
+    assert.equal(findAll(view.tree, (n) => n.type === 'select')[0].props.disabled, true)
+    assert.equal(findAll(view.tree, (n) => n.props?.className === 'tr-datepicker')[0].props.disabled, true)
+    assert.equal(findAll(view.tree, (n) => n.type === 'button' && textOf(n) === DICT.en.savePng)[0].props.disabled, true)
+    assert.equal(findAll(view.tree, (n) => String(n.props?.className || '').includes('tr-btn-primary'))[0].props.disabled, true)
+
+    // Finish copy -> shows Copied + CheckCircle, unlocks controls, schedules 3200ms timer.
+    pendingBlobCb({ size: 96, type: 'image/png' })
+    await copyPromise
+    const copiedBtn = findAll(view.tree, (n) => n.type === 'button' && textOf(n) === DICT.en.copiedImage)[0]
+    assert.ok(copiedBtn)
+    assert.equal(copiedBtn.children[0].type, 'svg')
+    assert.equal(copiedBtn.children[0].children[0].type, 'circle')
+    assert.equal(copiedBtn.children[0].children[0].props.fill, '#30a46c')
+    assert.equal(textOf(findAll(view.tree, (n) => n.props?.className === 'tr-sr-only')[0]), DICT.en.copiedImage)
+    assert.equal(findAll(view.tree, (n) => n.type === 'select')[0].props.disabled, false)
+    assert.equal([...timers.values()].some((t) => t.ms === 3200), true)
+
+    // 3200ms timer resets Copy button back to idle.
+    runTimerMatching((ms) => ms === 3200, 'copyState reset')
+    assert.ok(findAll(view.tree, (n) => n.type === 'button' && textOf(n) === DICT.en.copyImage)[0])
+
+    // Missing clipboard shows localized clipboardUnsupported in .tr-save-error with working Retry button.
+    windowObj.navigator = undefined
+    const copyIdleBtn = findAll(view.tree, (n) => n.type === 'button' && textOf(n) === DICT.en.copyImage)[0]
+    await copyIdleBtn.props.onClick()
+    const errorBanner = findAll(view.tree, (n) => n.props?.className === 'tr-save-error')[0]
+    assert.ok(errorBanner)
+    assert.ok(textOf(errorBanner).includes(DICT.en.copyFailed))
+    assert.ok(textOf(errorBanner).includes(DICT.en.clipboardUnsupported))
+
+    // Restore clipboard and click Retry inside .tr-save-error -> succeeds and clears error banner.
+    setupCanvasStub((cb) => cb({ size: 120, type: 'image/png' }))
+    windowObj.navigator = {
+      clipboard: {
+        async write(items) { await items[0].items['image/png'] },
+      },
+    }
+    const retryBtn = findAll(errorBanner, (n) => n.type === 'button' && textOf(n) === DICT.en.retry)[0]
+    assert.ok(retryBtn)
+    await retryBtn.props.onClick()
+    assert.equal(findAll(view.tree, (n) => n.props?.className === 'tr-save-error').length, 0)
+    assert.ok(findAll(view.tree, (n) => n.type === 'button' && textOf(n) === DICT.en.copiedImage)[0])
+    assert.equal([...timers.values()].some((t) => t.ms === 3200), true)
+
+    // Starting Save PNG clears prior copyState / copyTimerRef cleanly.
+    setupCanvasStub((cb) => { pendingBlobCb = cb })
+    const saveBtn = findAll(view.tree, (n) => n.type === 'button' && textOf(n) === DICT.en.savePng)[0]
+    const savePromise = saveBtn.props.onClick()
+    await flushMicrotasks()
+    assert.ok(findAll(view.tree, (n) => n.type === 'button' && textOf(n) === DICT.en.copyImage)[0], 'starting save clears copied badge')
+    pendingBlobCb({ size: 120, type: 'image/png' })
+    await savePromise
+
+    // Trigger copy again so 3200ms copyTimerRef is active, then unmount and confirm timer cleanup.
+    setupCanvasStub((cb) => cb({ size: 120, type: 'image/png' }))
+    await findAll(view.tree, (n) => n.type === 'button' && textOf(n) === DICT.en.copyImage)[0].props.onClick()
+    assert.equal([...timers.values()].some((t) => t.ms === 3200), true)
+    view.unmount()
+    assert.equal([...timers.values()].some((t) => t.ms === 3200), false, 'unmount must clear copyTimerRef')
+  } finally {
+    timers.clear()
+    env.createElementImpl = null
+    windowObj.navigator = undefined
+    windowObj.ClipboardItem = undefined
+  }
+})
+
+test('days30, days90, and all periods compute ranges, keys, bill numbers, date formatting, static toolbar UI, and replay print animations', async () => {
+  timers.clear()
+  reducedMotion = false
+  try {
+    // 1. Unit checks for period helpers and billNumber codes.
+    assert.deepEqual([...PERIODS], ['day', 'week', 'month', 'days30', 'days90', 'all'])
+    for (const p of ['day', 'week', 'month']) assert.equal(isSteppablePeriod(p), true)
+    for (const p of ['days30', 'days90', 'all']) assert.equal(isSteppablePeriod(p), false)
+
+    const fixedNow = new Date(2026, 10, 17, 14, 30, 0)
+    const r30 = periodRange('days30', fixedNow, fixedNow)
+    assert.equal(dateKey(r30.start), '2026-10-19')
+    assert.equal(dateKey(r30.end), '2026-11-18')
+    assert.equal(periodKey('days30', r30.start, r30.end), '2026-11-17')
+
+    const r90 = periodRange('days90', fixedNow, fixedNow)
+    assert.equal(dateKey(r90.start), '2026-08-20')
+    assert.equal(dateKey(r90.end), '2026-11-18')
+    assert.equal(periodKey('days90', r90.start, r90.end), '2026-11-17')
+
+    const rAll = periodRange('all', fixedNow, fixedNow)
+    assert.equal(rAll.start.getTime(), 1)
+    assert.equal(dateKey(rAll.end), '2026-11-18')
+    assert.equal(periodKey('all', rAll.start, rAll.end), '2026-11-17')
+
+    assert.ok(billNumber('day', '2026-11-17', 100, 1).startsWith('TR-D-20261117-'))
+    assert.ok(billNumber('week', '2026-11-09', 100, 1).startsWith('TR-W-20261109-'))
+    assert.ok(billNumber('month', '2026-11', 100, 1).startsWith('TR-M-202611-'))
+    assert.ok(billNumber('days30', '2026-11-17', 100, 1).startsWith('TR-30D-20261117-'))
+    assert.ok(billNumber('days90', '2026-11-17', 100, 1).startsWith('TR-90D-20261117-'))
+    assert.ok(billNumber('all', '2026-11-17', 100, 1).startsWith('TR-ALL-20261117-'))
+
+    // Cross-year vs same-year English range formatting, and all-time formatting.
+    const crossStart = new Date(2025, 11, 20)
+    const crossEndExcl = new Date(2026, 0, 19)
+    assert.equal(periodLabel('days30', crossStart, crossEndExcl, 'en'), 'Dec 20, 2025 – Jan 18, 2026')
+    assert.equal(periodLabel('days30', crossStart, crossEndExcl, 'zh'), '2025年12月20日 – 2026年1月18日')
+    assert.equal(periodLabel('days30', crossStart, crossEndExcl, 'ja'), '2025年12月20日〜2026年1月18日')
+
+    const sameYearStart = new Date(2026, 10, 9)
+    const sameYearEndExcl = new Date(2026, 10, 16)
+    assert.equal(periodLabel('week', sameYearStart, sameYearEndExcl, 'en'), 'Nov 9 – Nov 15, 2026')
+
+    assert.equal(periodLabel('all', new Date(1), crossEndExcl, 'en'), DICT.en.allTime)
+    assert.equal(periodLabel('all', new Date(1), crossEndExcl, 'zh'), DICT.zh.allTime)
+    assert.equal(periodLabel('all', new Date(1), crossEndExcl, 'ja'), DICT.ja.allTime)
+    assert.equal(relativeLabel('all', new Date(1), DICT.en), '')
+    assert.equal(relativeLabel('all', crossStart, DICT.en), DICT.en.allTime)
+
+    const singleDayEndExcl = new Date(2026, 10, 18)
+    assert.equal(periodLabel('all', new Date(2026, 10, 17), singleDayEndExcl, 'en'), 'Nov 17, 2026')
+
+    // 2. Receipt component formatting with period === 'all' (firstAt null vs cross-year timestamp).
+    const allNullTree = expand(React.createElement(Receipt, {
+      copy: DICT.en,
+      locale: 'en',
+      data: sampleBill({ period: 'all', from: 1, to: singleDayEndExcl.getTime(), date: '2026-11-17', firstAt: null }),
+      period: 'all',
+      currency: 'usd',
+    }))
+    const nullPaperDate = textOf(findAll(allNullTree, (n) => n.props?.className === 'tr-paper-date')[0])
+    assert.equal(nullPaperDate, DICT.en.allTime)
+    assert.equal(nullPaperDate.includes('1970'), false)
+    const metaValues = findAll(allNullTree, (n) => n.type === 'dd').map(textOf)
+    assert.ok(metaValues.some((v) => v.startsWith('TR-ALL-20261117-')))
+    assert.ok(metaValues.includes(DICT.en.all))
+
+    const allWithFirstAtTree = expand(React.createElement(Receipt, {
+      copy: DICT.en,
+      locale: 'en',
+      data: sampleBill({
+        period: 'all',
+        from: 1,
+        to: singleDayEndExcl.getTime(),
+        date: '2026-11-17',
+        firstAt: new Date(2025, 11, 20, 14, 0).getTime(),
+      }),
+      period: 'all',
+      currency: 'usd',
+    }))
+    assert.equal(
+      textOf(findAll(allWithFirstAtTree, (n) => n.props?.className === 'tr-paper-date')[0]),
+      'Dec 20, 2025 – Nov 17, 2026',
+    )
+
+    // 3. Panel integration: 6 period buttons across locales, query params, static datebox, print replay, and Today button.
+    const fetchedUrls = []
+    let nextBill = sampleBill()
+    env.fetchImpl = async (url) => {
+      fetchedUrls.push(url)
+      return { ok: true, status: 200, json: async () => nextBill }
+    }
+
+    const ctx = createMockCtx('en')
+    const view = mount(Panel, { ctx })
+    await flushMicrotasks()
+    runTimerMatching((ms) => ms > 0 && ms <= 850, 'initial MIN_PROCESSING_MS')
+    await flushMicrotasks()
+    runTimerMatching((ms) => ms === 1900, 'initial feed')
+    await flushMicrotasks()
+    const key0 = findAll(view.tree, (n) => String(n.props?.className || '').startsWith('tr-paper-wrap'))[0].props.key
+
+    const periodBtns = findAll(view.tree, (n) => String(n.props?.className || '').startsWith('tr-periodbtn'))
+    assert.deepEqual(
+      periodBtns.map(textOf),
+      [DICT.en.day, DICT.en.week, DICT.en.month, DICT.en.days30, DICT.en.days90, DICT.en.all],
+    )
+
+    // Switch to days30 -> plays print animation, hides steppable controls, shows static datebox.
+    const today = startOfDay(new Date())
+    const expectedTodayKey = dateKey(today)
+    const d30Start = periodRange('days30', today, today)
+    nextBill = sampleBill({ period: 'days30', from: d30Start.start.getTime(), to: d30Start.end.getTime(), date: expectedTodayKey })
+    periodBtns.find((b) => textOf(b) === DICT.en.days30).props.onClick()
+    await flushMicrotasks()
+
+    const url30 = new URL(fetchedUrls[1], 'http://localhost')
+    assert.equal(url30.searchParams.get('period'), 'days30')
+    assert.equal(Number(url30.searchParams.get('from')), d30Start.start.getTime())
+    assert.equal(Number(url30.searchParams.get('to')), d30Start.end.getTime())
+    assert.equal(url30.searchParams.get('date'), expectedTodayKey)
+
+    assert.equal(findAll(view.tree, (n) => n.props?.className === 'tr-navbtn').length, 0)
+    assert.equal(findAll(view.tree, (n) => n.props?.className === 'tr-datepicker').length, 0)
+    assert.equal(findAll(view.tree, (n) => String(n.props?.className || '').includes('tr-todaybtn')).length, 0)
+    const staticBox30 = findAll(view.tree, (n) => n.props?.className === 'tr-datebox is-static')[0]
+    assert.ok(staticBox30)
+    assert.equal(textOf(findAll(staticBox30, (n) => n.props?.className === 'tr-daterel')[0]), DICT.en.days30)
+
+    runTimerMatching((ms) => ms > 0 && ms <= 850, 'days30 MIN_PROCESSING_MS')
+    await flushMicrotasks()
+    const wrap30 = findAll(view.tree, (n) => String(n.props?.className || '').startsWith('tr-paper-wrap'))[0]
+    assert.equal(wrap30.props['data-stage'], 'printing')
+    assert.notEqual(wrap30.props.key, key0)
+    runTimerMatching((ms) => ms === 1900, 'days30 feed')
+    await flushMicrotasks()
+    assert.equal(findAll(view.tree, (n) => String(n.props?.className || '').startsWith('tr-paper-wrap'))[0].props['data-stage'], 'complete')
+
+    // Switch to days90 -> replays print animation again and verifies query params.
+    const d90Start = periodRange('days90', today, today)
+    nextBill = sampleBill({ period: 'days90', from: d90Start.start.getTime(), to: d90Start.end.getTime(), date: expectedTodayKey })
+    findAll(view.tree, (n) => String(n.props?.className || '').startsWith('tr-periodbtn'))
+      .find((b) => textOf(b) === DICT.en.days90).props.onClick()
+    await flushMicrotasks()
+    const url90 = new URL(fetchedUrls[2], 'http://localhost')
+    assert.equal(url90.searchParams.get('period'), 'days90')
+    assert.equal(Number(url90.searchParams.get('from')), d90Start.start.getTime())
+    assert.equal(url90.searchParams.get('date'), expectedTodayKey)
+    runTimerMatching((ms) => ms > 0 && ms <= 850, 'days90 MIN_PROCESSING_MS')
+    await flushMicrotasks()
+    const wrap90 = findAll(view.tree, (n) => String(n.props?.className || '').startsWith('tr-paper-wrap'))[0]
+    assert.equal(wrap90.props['data-stage'], 'printing')
+    assert.notEqual(wrap90.props.key, wrap30.props.key)
+    runTimerMatching((ms) => ms === 1900, 'days90 feed')
+    await flushMicrotasks()
+
+    // Switch to all with firstAt: null -> sends from=1 and non-1970 date, renders All time without duplicate sublabel.
+    const allRange = periodRange('all', today, today)
+    nextBill = sampleBill({ period: 'all', from: 1, to: allRange.end.getTime(), date: expectedTodayKey, firstAt: null })
+    findAll(view.tree, (n) => String(n.props?.className || '').startsWith('tr-periodbtn'))
+      .find((b) => textOf(b) === DICT.en.all).props.onClick()
+    await flushMicrotasks()
+    const urlAll = new URL(fetchedUrls[3], 'http://localhost')
+    assert.equal(urlAll.searchParams.get('period'), 'all')
+    assert.equal(urlAll.searchParams.get('from'), '1')
+    assert.equal(urlAll.searchParams.get('date'), expectedTodayKey)
+    assert.equal(urlAll.searchParams.get('date').startsWith('1970'), false)
+    runTimerMatching((ms) => ms > 0 && ms <= 850, 'all MIN_PROCESSING_MS')
+    await flushMicrotasks()
+    runTimerMatching((ms) => ms === 1900, 'all feed')
+    await flushMicrotasks()
+    const staticBoxAllNull = findAll(view.tree, (n) => n.props?.className === 'tr-datebox is-static')[0]
+    assert.equal(textOf(findAll(staticBoxAllNull, (n) => n.props?.className === 'tr-datemain')[0]), DICT.en.allTime)
+    assert.equal(findAll(staticBoxAllNull, (n) => n.props?.className === 'tr-daterel').length, 0)
+
+    // Verify Zh locale displays localized 6 period buttons and 全部时间 for null firstAt.
+    ctx.setLocale('zh-CN')
+    assert.deepEqual(
+      findAll(view.tree, (n) => String(n.props?.className || '').startsWith('tr-periodbtn')).map(textOf),
+      [DICT.zh.day, DICT.zh.week, DICT.zh.month, DICT.zh.days30, DICT.zh.days90, DICT.zh.all],
+    )
+    assert.equal(
+      textOf(findAll(view.tree, (n) => n.props?.className === 'tr-paper-date')[0]),
+      DICT.zh.allTime,
+    )
+
+    // Switch back to days30 then to all with non-null firstAt -> renders range + All time relative sublabel.
+    ctx.setLocale('en')
+    nextBill = sampleBill({ period: 'days30', from: d30Start.start.getTime(), to: d30Start.end.getTime(), date: expectedTodayKey })
+    findAll(view.tree, (n) => String(n.props?.className || '').startsWith('tr-periodbtn'))
+      .find((b) => textOf(b) === DICT.en.days30).props.onClick()
+    await flushMicrotasks()
+    runTimerMatching((ms) => ms > 0 && ms <= 850, 'days30 before all-with-firstAt MIN_PROCESSING_MS')
+    await flushMicrotasks()
+    runTimerMatching((ms) => ms === 1900, 'days30 before all-with-firstAt feed')
+    await flushMicrotasks()
+
+    const earlierFirstAt = new Date(today.getFullYear() - 1, 11, 20, 9, 0).getTime()
+    nextBill = sampleBill({ period: 'all', from: 1, to: allRange.end.getTime(), date: expectedTodayKey, firstAt: earlierFirstAt })
+    findAll(view.tree, (n) => String(n.props?.className || '').startsWith('tr-periodbtn'))
+      .find((b) => textOf(b) === DICT.en.all).props.onClick()
+    await flushMicrotasks()
+    runTimerMatching((ms) => ms > 0 && ms <= 850, 'all-with-firstAt MIN_PROCESSING_MS')
+    await flushMicrotasks()
+    runTimerMatching((ms) => ms === 1900, 'all-with-firstAt feed')
+    await flushMicrotasks()
+    const staticBoxAllData = findAll(view.tree, (n) => n.props?.className === 'tr-datebox is-static')[0]
+    assert.equal(
+      textOf(findAll(staticBoxAllData, (n) => n.props?.className === 'tr-datemain')[0]),
+      periodLabel('all', startOfDay(new Date(earlierFirstAt)), allRange.end, 'en'),
+    )
+    assert.equal(
+      textOf(findAll(staticBoxAllData, (n) => n.props?.className === 'tr-daterel')[0]),
+      DICT.en.allTime,
+    )
+
+    // Switch back to days30 then click machine Today button -> returns to day, restores steppable controls, and replays animation!
+    nextBill = sampleBill({ period: 'days30', from: d30Start.start.getTime(), to: d30Start.end.getTime(), date: expectedTodayKey })
+    findAll(view.tree, (n) => String(n.props?.className || '').startsWith('tr-periodbtn'))
+      .find((b) => textOf(b) === DICT.en.days30).props.onClick()
+    await flushMicrotasks()
+    runTimerMatching((ms) => ms > 0 && ms <= 850, 'days30 before Today MIN_PROCESSING_MS')
+    await flushMicrotasks()
+    runTimerMatching((ms) => ms === 1900, 'days30 before Today feed')
+    await flushMicrotasks()
+    const keyBeforeToday = findAll(view.tree, (n) => String(n.props?.className || '').startsWith('tr-paper-wrap'))[0].props.key
+
+    nextBill = sampleBill({ period: 'day' })
+    const machineTodayBtn = findAll(view.tree, (n) => n.props?.className === 'tr-machine-btn')[0]
+    machineTodayBtn.props.onClick()
+    await flushMicrotasks()
+    const urlToday = new URL(fetchedUrls[fetchedUrls.length - 1], 'http://localhost')
+    assert.equal(urlToday.searchParams.get('period'), 'day')
+    assert.equal(urlToday.searchParams.get('date'), expectedTodayKey)
+    assert.equal(findAll(view.tree, (n) => n.props?.className === 'tr-navbtn').length, 2, 'steppable nav buttons should return on day')
+    assert.equal(findAll(view.tree, (n) => n.props?.className === 'tr-datepicker').length, 1, 'datepicker should return on day')
+
+    runTimerMatching((ms) => ms > 0 && ms <= 850, 'Today return MIN_PROCESSING_MS')
+    await flushMicrotasks()
+    const wrapToday = findAll(view.tree, (n) => String(n.props?.className || '').startsWith('tr-paper-wrap'))[0]
+    assert.equal(wrapToday.props['data-stage'], 'printing')
+    assert.notEqual(wrapToday.props.key, keyBeforeToday)
+    runTimerMatching((ms) => ms === 1900, 'Today return feed')
+    await flushMicrotasks()
+    assert.equal(findAll(view.tree, (n) => String(n.props?.className || '').startsWith('tr-paper-wrap'))[0].props['data-stage'], 'complete')
+
+    view.unmount()
+    assert.equal(timers.size, 0)
+  } finally {
+    timers.clear()
+    reducedMotion = false
+    env.createElementImpl = null
+  }
 })
 
